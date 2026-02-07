@@ -61,7 +61,7 @@ serve(async (req) => {
             content: [
               {
                 type: "text",
-                text: "Transcribe this audio recording exactly as spoken. Return only the transcription text, nothing else. If you cannot understand parts, do your best to transcribe what you hear.",
+                text: "Transcribe this audio recording exactly as spoken. The audio may be in English or Swedish - transcribe in whatever language is being spoken. Return only the transcription text, nothing else. If you cannot understand parts, do your best to transcribe what you hear.",
               },
               {
                 type: "input_audio",

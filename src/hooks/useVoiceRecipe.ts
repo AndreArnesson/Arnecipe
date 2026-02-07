@@ -4,9 +4,13 @@ import { toast } from "sonner";
 
 interface UseVoiceRecipeResult {
   isRecording: boolean;
-  isProcessing: boolean;
+  isTranscribing: boolean;
+  isRefining: boolean;
+  rawTranscription: string | null;
   startVoiceInput: () => Promise<void>;
-  stopVoiceInput: () => Promise<RecipeData | null>;
+  stopVoiceInput: () => Promise<string | null>;
+  refineTranscription: (text: string) => Promise<RecipeData | null>;
+  clearTranscription: () => void;
   error: string | null;
 }
 
@@ -22,16 +26,19 @@ interface RecipeData {
 
 export function useVoiceRecipe(): UseVoiceRecipeResult {
   const { isRecording, startRecording, stopRecording, error: recorderError } = useAudioRecorder();
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isRefining, setIsRefining] = useState(false);
+  const [rawTranscription, setRawTranscription] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const startVoiceInput = useCallback(async () => {
     setError(null);
+    setRawTranscription(null);
     await startRecording();
   }, [startRecording]);
 
-  const stopVoiceInput = useCallback(async (): Promise<RecipeData | null> => {
-    setIsProcessing(true);
+  const stopVoiceInput = useCallback(async (): Promise<string | null> => {
+    setIsTranscribing(true);
     setError(null);
 
     try {
@@ -42,7 +49,7 @@ export function useVoiceRecipe(): UseVoiceRecipeResult {
 
       toast.info("Transcribing your voice...");
 
-      // Step 1: Transcribe audio
+      // Transcribe audio
       const formData = new FormData();
       formData.append("audio", audioBlob, "recording.webm");
 
@@ -69,9 +76,26 @@ export function useVoiceRecipe(): UseVoiceRecipeResult {
       }
 
       console.log("Raw transcription:", rawText);
+      setRawTranscription(rawText);
+      toast.success("Transcription complete! Review and edit if needed.");
+      return rawText;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Voice input failed";
+      setError(message);
+      toast.error(message);
+      return null;
+    } finally {
+      setIsTranscribing(false);
+    }
+  }, [stopRecording]);
+
+  const refineTranscription = useCallback(async (text: string): Promise<RecipeData | null> => {
+    setIsRefining(true);
+    setError(null);
+
+    try {
       toast.info("Refining your recipe...");
 
-      // Step 2: Refine with AI
       const refineResponse = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refine-recipe`,
         {
@@ -80,7 +104,7 @@ export function useVoiceRecipe(): UseVoiceRecipeResult {
             "Content-Type": "application/json",
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ rawText }),
+          body: JSON.stringify({ rawText: text }),
         }
       );
 
@@ -90,23 +114,33 @@ export function useVoiceRecipe(): UseVoiceRecipeResult {
       }
 
       const recipe = await refineResponse.json();
-      toast.success("Recipe created from your voice!");
+      toast.success("Recipe created!");
+      setRawTranscription(null);
       return recipe;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Voice input failed";
+      const message = err instanceof Error ? err.message : "Refinement failed";
       setError(message);
       toast.error(message);
       return null;
     } finally {
-      setIsProcessing(false);
+      setIsRefining(false);
     }
-  }, [stopRecording]);
+  }, []);
+
+  const clearTranscription = useCallback(() => {
+    setRawTranscription(null);
+    setError(null);
+  }, []);
 
   return {
     isRecording,
-    isProcessing,
+    isTranscribing,
+    isRefining,
+    rawTranscription,
     startVoiceInput,
     stopVoiceInput,
+    refineTranscription,
+    clearTranscription,
     error: error || recorderError,
   };
 }
