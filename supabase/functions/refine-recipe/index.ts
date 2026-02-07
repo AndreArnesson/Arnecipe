@@ -30,7 +30,7 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are a helpful cooking assistant for the Arnesson family recipe book. Your job is to take raw, spoken recipe descriptions and convert them into well-structured, easy-to-read recipes. Clean up the language, organize ingredients with proper measurements, and create clear step-by-step instructions. Always respond with valid JSON.`;
+    const systemPrompt = `You are a helpful cooking assistant for the Arnesson family recipe book. Your job is to take raw, spoken recipe descriptions and convert them into well-structured, easy-to-read recipes. The input may be in English or Swedish - always respond in the SAME language as the input. Clean up the language, organize ingredients with proper measurements, and create clear step-by-step instructions. Always respond with valid JSON.`;
 
     const userPrompt = `Convert this spoken recipe description into a properly formatted recipe:
 

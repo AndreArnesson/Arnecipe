@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Sparkles, Loader2, X, Mic, MicOff } from "lucide-react";
+import { Plus, Sparkles, Loader2, X, Mic, MicOff, Check, Edit3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -19,7 +19,8 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
   const [open, setOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const { isRecording, isProcessing, startVoiceInput, stopVoiceInput } = useVoiceRecipe();
+  const { isRecording, isTranscribing, isRefining, rawTranscription, startVoiceInput, stopVoiceInput, refineTranscription, clearTranscription } = useVoiceRecipe();
+  const [editedTranscription, setEditedTranscription] = useState("");
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -37,7 +38,11 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
     setPrepTime("");
     setCookTime("");
     setServings("");
+    setEditedTranscription("");
+    clearTranscription();
   };
+
+  const isProcessing = isTranscribing || isRefining;
 
   const handleGenerateWithAI = async () => {
     if (!title.trim()) {
@@ -82,19 +87,34 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
 
   const handleVoiceToggle = async () => {
     if (isRecording) {
-      const recipe = await stopVoiceInput();
-      if (recipe) {
-        if (recipe.title) setTitle(recipe.title);
-        if (recipe.description) setDescription(recipe.description);
-        if (recipe.ingredients?.length) setIngredients(recipe.ingredients);
-        if (recipe.instructions?.length) setInstructions(recipe.instructions);
-        if (recipe.prepTime) setPrepTime(recipe.prepTime.toString());
-        if (recipe.cookTime) setCookTime(recipe.cookTime.toString());
-        if (recipe.servings) setServings(recipe.servings.toString());
+      const transcription = await stopVoiceInput();
+      if (transcription) {
+        setEditedTranscription(transcription);
       }
     } else {
       await startVoiceInput();
     }
+  };
+
+  const handleRefineTranscription = async () => {
+    if (!editedTranscription.trim()) return;
+    
+    const recipe = await refineTranscription(editedTranscription);
+    if (recipe) {
+      if (recipe.title) setTitle(recipe.title);
+      if (recipe.description) setDescription(recipe.description);
+      if (recipe.ingredients?.length) setIngredients(recipe.ingredients);
+      if (recipe.instructions?.length) setInstructions(recipe.instructions);
+      if (recipe.prepTime) setPrepTime(recipe.prepTime.toString());
+      if (recipe.cookTime) setCookTime(recipe.cookTime.toString());
+      if (recipe.servings) setServings(recipe.servings.toString());
+      setEditedTranscription("");
+    }
+  };
+
+  const handleCancelTranscription = () => {
+    setEditedTranscription("");
+    clearTranscription();
   };
 
   const handleSave = async () => {
@@ -177,47 +197,92 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Voice Input Section */}
-          <div className="p-4 rounded-lg bg-secondary/50 border border-border">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-medium text-foreground">Voice Input</h3>
-                <p className="text-xs text-muted-foreground">
-                  {isRecording 
-                    ? "Speak your recipe... Click to stop" 
-                    : isProcessing 
-                      ? "Processing your voice..." 
-                      : "Dictate ingredients and steps naturally"}
-                </p>
+          {/* Transcription Preview */}
+          {(rawTranscription || editedTranscription) && !isRecording && (
+            <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Edit3 className="h-4 w-4 text-primary" />
+                <h3 className="font-medium text-foreground">Review Transcription</h3>
               </div>
-              <Button
-                type="button"
-                variant={isRecording ? "destructive" : "outline"}
-                size="lg"
-                onClick={handleVoiceToggle}
-                disabled={isProcessing || isGenerating || isSaving}
-                className="gap-2"
-              >
-                {isProcessing ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : isRecording ? (
-                  <MicOff className="h-5 w-5" />
-                ) : (
-                  <Mic className="h-5 w-5" />
-                )}
-                {isRecording ? "Stop" : isProcessing ? "Processing..." : "Record"}
-              </Button>
+              <p className="text-xs text-muted-foreground mb-3">
+                Edit the text below if needed, then click "Create Recipe" to refine it with AI
+              </p>
+              <Textarea
+                value={editedTranscription}
+                onChange={(e) => setEditedTranscription(e.target.value)}
+                placeholder="Your transcribed recipe..."
+                rows={4}
+                className="mb-3"
+              />
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  onClick={handleRefineTranscription}
+                  disabled={isRefining || !editedTranscription.trim()}
+                  className="gap-2"
+                >
+                  {isRefining ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Check className="h-4 w-4" />
+                  )}
+                  Create Recipe
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancelTranscription}
+                  disabled={isRefining}
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
-            {isRecording && (
-              <div className="mt-3 flex items-center gap-2">
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
-                </span>
-                <span className="text-sm text-destructive font-medium">Recording...</span>
+          )}
+
+          {/* Voice Input Section */}
+          {!rawTranscription && !editedTranscription && (
+            <div className="p-4 rounded-lg bg-secondary/50 border border-border">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium text-foreground">Voice Input</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {isRecording 
+                      ? "Speak your recipe in English or Swedish... Click to stop" 
+                      : isTranscribing 
+                        ? "Transcribing your voice..." 
+                        : "Dictate ingredients and steps naturally"}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant={isRecording ? "destructive" : "outline"}
+                  size="lg"
+                  onClick={handleVoiceToggle}
+                  disabled={isTranscribing || isGenerating || isSaving}
+                  className="gap-2"
+                >
+                  {isTranscribing ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : isRecording ? (
+                    <MicOff className="h-5 w-5" />
+                  ) : (
+                    <Mic className="h-5 w-5" />
+                  )}
+                  {isRecording ? "Stop" : isTranscribing ? "Transcribing..." : "Record"}
+                </Button>
               </div>
-            )}
-          </div>
+              {isRecording && (
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
+                  </span>
+                  <span className="text-sm text-destructive font-medium">Recording...</span>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
