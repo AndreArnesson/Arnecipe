@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,9 +13,9 @@ serve(async (req) => {
   }
 
   try {
-    const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
-    if (!ELEVENLABS_API_KEY) {
-      console.error("ELEVENLABS_API_KEY is not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY is not configured");
       return new Response(
         JSON.stringify({ error: "Speech-to-text service not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -33,32 +34,85 @@ serve(async (req) => {
 
     console.log("Transcribing audio file:", audioFile.name, "Size:", audioFile.size);
 
-    const apiFormData = new FormData();
-    apiFormData.append("file", audioFile);
-    apiFormData.append("model_id", "scribe_v2");
-    apiFormData.append("language_code", "eng");
+    // Convert audio to base64
+    const audioBuffer = await audioFile.arrayBuffer();
+    const base64Audio = base64Encode(audioBuffer);
 
-    const response = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
+    // Determine MIME type
+    let mimeType = audioFile.type || "audio/webm";
+    if (mimeType === "audio/webm") {
+      mimeType = "audio/webm";
+    }
+
+    console.log("Audio MIME type:", mimeType);
+
+    // Use Gemini for transcription (it supports audio input)
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        "xi-api-key": ELEVENLABS_API_KEY,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
       },
-      body: apiFormData,
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Transcribe this audio recording exactly as spoken. Return only the transcription text, nothing else. If you cannot understand parts, do your best to transcribe what you hear.",
+              },
+              {
+                type: "input_audio",
+                input_audio: {
+                  data: base64Audio,
+                  format: mimeType.includes("webm") ? "webm" : mimeType.includes("mp4") ? "mp4" : "wav",
+                },
+              },
+            ],
+          },
+        ],
+      }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("ElevenLabs STT error:", response.status, errorText);
+      console.error("AI transcription error:", response.status, errorText);
+      
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Rate limits exceeded, please try again later." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "Payment required, please add funds." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ error: "Transcription failed" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const transcription = await response.json();
-    console.log("Transcription successful:", transcription.text?.substring(0, 100));
+    const data = await response.json();
+    const transcription = data.choices?.[0]?.message?.content;
 
-    return new Response(JSON.stringify({ text: transcription.text }), {
+    if (!transcription) {
+      console.error("No transcription in response");
+      return new Response(
+        JSON.stringify({ error: "Failed to transcribe audio" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("Transcription successful:", transcription.substring(0, 100));
+
+    return new Response(JSON.stringify({ text: transcription }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
