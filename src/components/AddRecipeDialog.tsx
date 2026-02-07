@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Sparkles, Loader2, X } from "lucide-react";
+import { Plus, Sparkles, Loader2, X, Mic, MicOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { useVoiceRecipe } from "@/hooks/useVoiceRecipe";
 
 interface AddRecipeDialogProps {
   onRecipeAdded?: () => void;
@@ -18,6 +19,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
   const [open, setOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const { isRecording, isProcessing, startVoiceInput, stopVoiceInput } = useVoiceRecipe();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -75,6 +77,23 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
       toast.error("Failed to generate recipe");
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleVoiceToggle = async () => {
+    if (isRecording) {
+      const recipe = await stopVoiceInput();
+      if (recipe) {
+        if (recipe.title) setTitle(recipe.title);
+        if (recipe.description) setDescription(recipe.description);
+        if (recipe.ingredients?.length) setIngredients(recipe.ingredients);
+        if (recipe.instructions?.length) setInstructions(recipe.instructions);
+        if (recipe.prepTime) setPrepTime(recipe.prepTime.toString());
+        if (recipe.cookTime) setCookTime(recipe.cookTime.toString());
+        if (recipe.servings) setServings(recipe.servings.toString());
+      }
+    } else {
+      await startVoiceInput();
     }
   };
 
@@ -158,6 +177,57 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
         </DialogHeader>
 
         <div className="space-y-6 py-4">
+          {/* Voice Input Section */}
+          <div className="p-4 rounded-lg bg-secondary/50 border border-border">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium text-foreground">Voice Input</h3>
+                <p className="text-xs text-muted-foreground">
+                  {isRecording 
+                    ? "Speak your recipe... Click to stop" 
+                    : isProcessing 
+                      ? "Processing your voice..." 
+                      : "Dictate ingredients and steps naturally"}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant={isRecording ? "destructive" : "outline"}
+                size="lg"
+                onClick={handleVoiceToggle}
+                disabled={isProcessing || isGenerating || isSaving}
+                className="gap-2"
+              >
+                {isProcessing ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : isRecording ? (
+                  <MicOff className="h-5 w-5" />
+                ) : (
+                  <Mic className="h-5 w-5" />
+                )}
+                {isRecording ? "Stop" : isProcessing ? "Processing..." : "Record"}
+              </Button>
+            </div>
+            {isRecording && (
+              <div className="mt-3 flex items-center gap-2">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
+                </span>
+                <span className="text-sm text-destructive font-medium">Recording...</span>
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">Or enter manually</span>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="title">Recipe Title</Label>
             <div className="flex gap-2">
@@ -171,7 +241,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
                 type="button"
                 variant="secondary"
                 onClick={handleGenerateWithAI}
-                disabled={isGenerating || !title.trim()}
+                disabled={isGenerating || !title.trim() || isRecording || isProcessing}
                 className="shrink-0"
               >
                 {isGenerating ? (
