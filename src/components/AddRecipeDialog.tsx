@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Sparkles, Loader2, X, Mic, MicOff, Check, Edit3 } from "lucide-react";
+import { Plus, Sparkles, Loader2, X, Mic, MicOff, Check, Edit3, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -19,8 +19,9 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
   const [open, setOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const { isRecording, isTranscribing, isRefining, rawTranscription, startVoiceInput, stopVoiceInput, refineTranscription, clearTranscription } = useVoiceRecipe();
+  const { isListening, isRefining, transcript, interimTranscript, isSupported, language, setLanguage, startListening, stopListening, refineTranscription, clearTranscription } = useVoiceRecipe();
   const [editedTranscription, setEditedTranscription] = useState("");
+  const [showTranscriptPreview, setShowTranscriptPreview] = useState(false);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -39,10 +40,9 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
     setCookTime("");
     setServings("");
     setEditedTranscription("");
+    setShowTranscriptPreview(false);
     clearTranscription();
   };
-
-  const isProcessing = isTranscribing || isRefining;
 
   const handleGenerateWithAI = async () => {
     if (!title.trim()) {
@@ -85,14 +85,17 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
     }
   };
 
-  const handleVoiceToggle = async () => {
-    if (isRecording) {
-      const transcription = await stopVoiceInput();
-      if (transcription) {
-        setEditedTranscription(transcription);
+  const handleVoiceToggle = () => {
+    if (isListening) {
+      stopListening();
+      // Show the preview with current transcript
+      if (transcript.trim()) {
+        setEditedTranscription(transcript);
+        setShowTranscriptPreview(true);
       }
     } else {
-      await startVoiceInput();
+      startListening();
+      setShowTranscriptPreview(false);
     }
   };
 
@@ -114,6 +117,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
 
   const handleCancelTranscription = () => {
     setEditedTranscription("");
+    setShowTranscriptPreview(false);
     clearTranscription();
   };
 
@@ -198,7 +202,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
 
         <div className="space-y-6 py-4">
           {/* Transcription Preview */}
-          {(rawTranscription || editedTranscription) && !isRecording && (
+          {showTranscriptPreview && !isListening && (
             <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
               <div className="flex items-center gap-2 mb-2">
                 <Edit3 className="h-4 w-4 text-primary" />
@@ -241,45 +245,72 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
           )}
 
           {/* Voice Input Section */}
-          {!rawTranscription && !editedTranscription && (
+          {!showTranscriptPreview && (
             <div className="p-4 rounded-lg bg-secondary/50 border border-border">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mb-3">
                 <div>
                   <h3 className="font-medium text-foreground">Voice Input</h3>
                   <p className="text-xs text-muted-foreground">
-                    {isRecording 
-                      ? "Speak your recipe in English or Swedish... Click to stop" 
-                      : isTranscribing 
-                        ? "Transcribing your voice..." 
-                        : "Dictate ingredients and steps naturally"}
+                    {isListening 
+                      ? "Listening... Speak your recipe, then click Stop" 
+                      : "Dictate ingredients and steps naturally"}
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  variant={isRecording ? "destructive" : "outline"}
-                  size="lg"
-                  onClick={handleVoiceToggle}
-                  disabled={isTranscribing || isGenerating || isSaving}
-                  className="gap-2"
-                >
-                  {isTranscribing ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : isRecording ? (
-                    <MicOff className="h-5 w-5" />
-                  ) : (
-                    <Mic className="h-5 w-5" />
-                  )}
-                  {isRecording ? "Stop" : isTranscribing ? "Transcribing..." : "Record"}
-                </Button>
-              </div>
-              {isRecording && (
-                <div className="mt-3 flex items-center gap-2">
-                  <span className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
-                  </span>
-                  <span className="text-sm text-destructive font-medium">Recording...</span>
+                <div className="flex items-center gap-2">
+                  {/* Language Toggle */}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setLanguage(language === "sv-SE" ? "en-US" : "sv-SE")}
+                    disabled={isListening}
+                    className="gap-1 text-xs"
+                  >
+                    <Globe className="h-3 w-3" />
+                    {language === "sv-SE" ? "🇸🇪 SV" : "🇺🇸 EN"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={isListening ? "destructive" : "outline"}
+                    size="lg"
+                    onClick={handleVoiceToggle}
+                    disabled={!isSupported || isGenerating || isSaving}
+                    className="gap-2"
+                  >
+                    {isListening ? (
+                      <MicOff className="h-5 w-5" />
+                    ) : (
+                      <Mic className="h-5 w-5" />
+                    )}
+                    {isListening ? "Stop" : "Record"}
+                  </Button>
                 </div>
+              </div>
+              
+              {!isSupported && (
+                <p className="text-xs text-destructive">
+                  Speech recognition is not supported in this browser. Please use Chrome or Edge.
+                </p>
+              )}
+              
+              {isListening && (
+                <>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
+                    </span>
+                    <span className="text-sm text-destructive font-medium">Listening...</span>
+                  </div>
+                  {/* Live transcript preview */}
+                  <div className="p-3 rounded bg-background border text-sm min-h-[60px]">
+                    {transcript && <span>{transcript} </span>}
+                    {interimTranscript && <span className="text-muted-foreground">{interimTranscript}</span>}
+                    {!transcript && !interimTranscript && (
+                      <span className="text-muted-foreground italic">Start speaking...</span>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -306,7 +337,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
                 type="button"
                 variant="secondary"
                 onClick={handleGenerateWithAI}
-                disabled={isGenerating || !title.trim() || isRecording || isProcessing}
+                disabled={isGenerating || !title.trim() || isListening || isRefining}
                 className="shrink-0"
               >
                 {isGenerating ? (

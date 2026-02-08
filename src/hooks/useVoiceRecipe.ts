@@ -1,14 +1,17 @@
 import { useState, useCallback } from "react";
-import { useAudioRecorder } from "@/hooks/useAudioRecorder";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { toast } from "sonner";
 
 interface UseVoiceRecipeResult {
-  isRecording: boolean;
-  isTranscribing: boolean;
+  isListening: boolean;
   isRefining: boolean;
-  rawTranscription: string | null;
-  startVoiceInput: () => Promise<void>;
-  stopVoiceInput: () => Promise<string | null>;
+  transcript: string;
+  interimTranscript: string;
+  isSupported: boolean;
+  language: string;
+  setLanguage: (lang: string) => void;
+  startListening: () => void;
+  stopListening: () => void;
   refineTranscription: (text: string) => Promise<RecipeData | null>;
   clearTranscription: () => void;
   error: string | null;
@@ -25,69 +28,30 @@ interface RecipeData {
 }
 
 export function useVoiceRecipe(): UseVoiceRecipeResult {
-  const { isRecording, startRecording, stopRecording, error: recorderError } = useAudioRecorder();
-  const [isTranscribing, setIsTranscribing] = useState(false);
+  const {
+    isListening,
+    transcript,
+    interimTranscript,
+    startListening: startRecognition,
+    stopListening: stopRecognition,
+    resetTranscript,
+    isSupported,
+    error: recognitionError,
+    language,
+    setLanguage,
+  } = useSpeechRecognition();
+
   const [isRefining, setIsRefining] = useState(false);
-  const [rawTranscription, setRawTranscription] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const startVoiceInput = useCallback(async () => {
+  const startListening = useCallback(() => {
     setError(null);
-    setRawTranscription(null);
-    await startRecording();
-  }, [startRecording]);
+    startRecognition();
+  }, [startRecognition]);
 
-  const stopVoiceInput = useCallback(async (): Promise<string | null> => {
-    setIsTranscribing(true);
-    setError(null);
-
-    try {
-      const audioBlob = await stopRecording();
-      if (!audioBlob) {
-        throw new Error("No audio recorded");
-      }
-
-      toast.info("Transcribing your voice...");
-
-      // Transcribe audio
-      const formData = new FormData();
-      formData.append("audio", audioBlob, "recording.webm");
-
-      const transcribeResponse = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcribe-audio`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: formData,
-        }
-      );
-
-      if (!transcribeResponse.ok) {
-        const errorData = await transcribeResponse.json();
-        throw new Error(errorData.error || "Transcription failed");
-      }
-
-      const { text: rawText } = await transcribeResponse.json();
-      
-      if (!rawText || rawText.trim().length === 0) {
-        throw new Error("Could not understand the audio. Please try again.");
-      }
-
-      console.log("Raw transcription:", rawText);
-      setRawTranscription(rawText);
-      toast.success("Transcription complete! Review and edit if needed.");
-      return rawText;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Voice input failed";
-      setError(message);
-      toast.error(message);
-      return null;
-    } finally {
-      setIsTranscribing(false);
-    }
-  }, [stopRecording]);
+  const stopListening = useCallback(() => {
+    stopRecognition();
+  }, [stopRecognition]);
 
   const refineTranscription = useCallback(async (text: string): Promise<RecipeData | null> => {
     setIsRefining(true);
@@ -115,7 +79,7 @@ export function useVoiceRecipe(): UseVoiceRecipeResult {
 
       const recipe = await refineResponse.json();
       toast.success("Recipe created!");
-      setRawTranscription(null);
+      resetTranscript();
       return recipe;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Refinement failed";
@@ -125,22 +89,25 @@ export function useVoiceRecipe(): UseVoiceRecipeResult {
     } finally {
       setIsRefining(false);
     }
-  }, []);
+  }, [resetTranscript]);
 
   const clearTranscription = useCallback(() => {
-    setRawTranscription(null);
+    resetTranscript();
     setError(null);
-  }, []);
+  }, [resetTranscript]);
 
   return {
-    isRecording,
-    isTranscribing,
+    isListening,
     isRefining,
-    rawTranscription,
-    startVoiceInput,
-    stopVoiceInput,
+    transcript,
+    interimTranscript,
+    isSupported,
+    language,
+    setLanguage,
+    startListening,
+    stopListening,
     refineTranscription,
     clearTranscription,
-    error: error || recorderError,
+    error: error || recognitionError,
   };
 }
