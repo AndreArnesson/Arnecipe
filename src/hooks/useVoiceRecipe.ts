@@ -25,6 +25,7 @@ interface RecipeData {
   prepTime?: number;
   cookTime?: number;
   servings?: number;
+  category?: string;
 }
 
 export function useVoiceRecipe(): UseVoiceRecipeResult {
