@@ -44,6 +44,7 @@ Return a JSON object with:
 - prepTime: Estimated preparation time in minutes (number)
 - cookTime: Estimated cooking time in minutes (number)
 - servings: Estimated number of servings (number)
+- category: One of these categories that best fits the recipe: "Förrätt", "Huvudrätt", "Efterrätt", "Bakning", "Sallad", "Soppa", "Frukost", "Mellanmål", "Dryck", "Övrigt"
 
 Only return the JSON object, no markdown or other text.`;
 

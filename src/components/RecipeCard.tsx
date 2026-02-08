@@ -1,6 +1,8 @@
 import { Clock, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useLanguage } from "@/i18n/LanguageContext";
+import { RecipeCategory } from "@/i18n/translations";
 
 interface RecipeCardProps {
   id: string;
@@ -10,6 +12,7 @@ interface RecipeCardProps {
   cookTime?: number;
   servings?: number;
   imageUrl?: string;
+  category?: string | null;
   onClick?: () => void;
 }
 
@@ -20,8 +23,10 @@ export function RecipeCard({
   cookTime,
   servings,
   imageUrl,
+  category,
   onClick,
 }: RecipeCardProps) {
+  const { t, language } = useLanguage();
   const totalTime = (prepTime || 0) + (cookTime || 0);
 
   return (
@@ -43,6 +48,11 @@ export function RecipeCard({
             </span>
           </div>
         )}
+        {category && (
+          <Badge className="absolute top-2 right-2 bg-background/90 text-foreground backdrop-blur-sm">
+            {language === "en" ? t(`category.${category}` as any) : category}
+          </Badge>
+        )}
       </div>
       <CardContent className="p-4">
         <h3 className="font-display text-lg font-semibold text-foreground mb-2 line-clamp-1">
@@ -57,13 +67,13 @@ export function RecipeCard({
           {totalTime > 0 && (
             <div className="flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" />
-              <span>{totalTime} min</span>
+              <span>{totalTime} {t("recipe.minutes")}</span>
             </div>
           )}
           {servings && (
             <div className="flex items-center gap-1">
               <Users className="h-3.5 w-3.5" />
-              <span>{servings} servings</span>
+              <span>{servings} {t("recipe.servings")}</span>
             </div>
           )}
         </div>

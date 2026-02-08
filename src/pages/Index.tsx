@@ -1,14 +1,18 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { RecipeCard } from "@/components/RecipeCard";
 import { RecipeDetail } from "@/components/RecipeDetail";
 import { AddRecipeDialog } from "@/components/AddRecipeDialog";
+import { CategoryFilter } from "@/components/CategoryFilter";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChefHat, LogOut, Search, Loader2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
+import { RecipeCategory } from "@/i18n/translations";
 
 interface Recipe {
   id: string;
@@ -20,6 +24,7 @@ interface Recipe {
   cook_time?: number;
   servings?: number;
   image_url?: string;
+  category?: string | null;
   created_at: string;
   user_id: string;
   profiles?: {
@@ -29,11 +34,13 @@ interface Recipe {
 
 export default function Index() {
   const { user, loading, signOut } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -48,18 +55,33 @@ export default function Index() {
 
     setIsLoadingRecipes(true);
     try {
-      const { data, error } = await supabase
+      // Fetch recipes first
+      const { data: recipesData, error: recipesError } = await supabase
         .from("recipes")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) {
-        console.error("Error fetching recipes:", error);
+      if (recipesError) {
+        console.error("Error fetching recipes:", recipesError);
         toast.error("Failed to load recipes");
         return;
       }
 
-      setRecipes(data || []);
+      // Fetch profiles for all recipe creators
+      const userIds = [...new Set((recipesData || []).map(r => r.user_id))];
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("user_id, display_name")
+        .in("user_id", userIds);
+      
+      const profilesMap = new Map((profilesData || []).map(p => [p.user_id, p]));
+      
+      const recipesWithProfiles = (recipesData || []).map(recipe => ({
+        ...recipe,
+        profiles: profilesMap.get(recipe.user_id) as { display_name?: string } | undefined
+      }));
+      
+      setRecipes(recipesWithProfiles);
     } catch (error) {
       console.error("Error fetching recipes:", error);
       toast.error("Failed to load recipes");
@@ -74,10 +96,15 @@ export default function Index() {
     }
   }, [user]);
 
-  const filteredRecipes = recipes.filter((recipe) =>
-    recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    recipe.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredRecipes = recipes.filter((recipe) => {
+    const matchesSearch = 
+      recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      recipe.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesCategory = selectedCategory === null || recipe.category === selectedCategory;
+    
+    return matchesSearch && matchesCategory;
+  });
 
   const handleRecipeClick = (recipe: Recipe) => {
     setSelectedRecipe(recipe);
@@ -108,15 +135,16 @@ export default function Index() {
               </div>
               <div>
                 <h1 className="font-display text-xl font-bold text-foreground">
-                  Arnesson Family
+                  {t("app.title")}
                 </h1>
-                <p className="text-xs text-muted-foreground">Recipe Book</p>
+                <p className="text-xs text-muted-foreground">{t("app.subtitle")}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <LanguageToggle />
               <AddRecipeDialog onRecipeAdded={fetchRecipes} />
-              <Button variant="ghost" size="icon" onClick={signOut}>
+              <Button variant="ghost" size="icon" onClick={signOut} title={t("auth.signOut")}>
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
@@ -128,20 +156,28 @@ export default function Index() {
       <section className="gradient-hero py-12 px-4">
         <div className="container mx-auto text-center">
           <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-            Family Recipes, <span className="text-gradient">Lovingly Preserved</span>
+            {t("hero.title")} <span className="text-gradient">{t("hero.titleHighlight")}</span>
           </h2>
           <p className="text-muted-foreground max-w-md mx-auto mb-8">
-            Cook, share, and pass down the flavors that make our family special
+            {t("hero.description")}
           </p>
 
           {/* Search */}
-          <div className="relative max-w-md mx-auto">
+          <div className="relative max-w-md mx-auto mb-6">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search recipes..."
+              placeholder={t("hero.search")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-11 h-12 bg-background/80 backdrop-blur-sm"
+            />
+          </div>
+
+          {/* Category Filter */}
+          <div className="max-w-3xl mx-auto">
+            <CategoryFilter
+              selectedCategory={selectedCategory}
+              onCategoryChange={setSelectedCategory}
             />
           </div>
         </div>
@@ -159,14 +195,14 @@ export default function Index() {
               <BookOpen className="h-8 w-8 text-muted-foreground" />
             </div>
             <h3 className="font-display text-xl font-semibold text-foreground mb-2">
-              {searchQuery ? "No recipes found" : "No recipes yet"}
+              {searchQuery || selectedCategory ? t("recipe.noRecipesFound") : t("recipe.noRecipes")}
             </h3>
             <p className="text-muted-foreground mb-6">
-              {searchQuery
-                ? "Try a different search term"
-                : "Add your first family recipe to get started!"}
+              {searchQuery || selectedCategory
+                ? t("recipe.tryDifferentSearch")
+                : t("recipe.noRecipesDescription")}
             </p>
-            {!searchQuery && <AddRecipeDialog onRecipeAdded={fetchRecipes} />}
+            {!searchQuery && !selectedCategory && <AddRecipeDialog onRecipeAdded={fetchRecipes} />}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -184,6 +220,7 @@ export default function Index() {
                   cookTime={recipe.cook_time}
                   servings={recipe.servings}
                   imageUrl={recipe.image_url}
+                  category={recipe.category}
                   onClick={() => handleRecipeClick(recipe)}
                 />
               </div>

@@ -1,6 +1,8 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Users, ChefHat } from "lucide-react";
+import { Clock, Users, ChefHat, Tag } from "lucide-react";
+import { useLanguage } from "@/i18n/LanguageContext";
+import { RecipeCategory } from "@/i18n/translations";
 
 interface Recipe {
   id: string;
@@ -12,6 +14,7 @@ interface Recipe {
   cook_time?: number;
   servings?: number;
   image_url?: string;
+  category?: string | null;
   created_at: string;
   profiles?: {
     display_name?: string;
@@ -25,6 +28,8 @@ interface RecipeDetailProps {
 }
 
 export function RecipeDetail({ recipe, open, onOpenChange }: RecipeDetailProps) {
+  const { t, language } = useLanguage();
+  
   if (!recipe) return null;
 
   const totalTime = (recipe.prep_time || 0) + (recipe.cook_time || 0);
@@ -57,19 +62,25 @@ export function RecipeDetail({ recipe, open, onOpenChange }: RecipeDetailProps) 
             {totalTime > 0 && (
               <Badge variant="secondary" className="gap-1.5 py-1.5 px-3">
                 <Clock className="h-3.5 w-3.5" />
-                {totalTime} minutes total
+                {totalTime} {t("recipe.totalTime")}
               </Badge>
             )}
             {recipe.servings && (
               <Badge variant="secondary" className="gap-1.5 py-1.5 px-3">
                 <Users className="h-3.5 w-3.5" />
-                {recipe.servings} servings
+                {recipe.servings} {t("recipe.servings")}
+              </Badge>
+            )}
+            {recipe.category && (
+              <Badge variant="secondary" className="gap-1.5 py-1.5 px-3">
+                <Tag className="h-3.5 w-3.5" />
+                {language === "en" ? t(`category.${recipe.category}` as any) : recipe.category}
               </Badge>
             )}
             {recipe.profiles?.display_name && (
               <Badge variant="outline" className="gap-1.5 py-1.5 px-3">
                 <ChefHat className="h-3.5 w-3.5" />
-                {recipe.profiles.display_name}
+                {t("recipe.createdBy")} {recipe.profiles.display_name}
               </Badge>
             )}
           </div>
@@ -78,14 +89,14 @@ export function RecipeDetail({ recipe, open, onOpenChange }: RecipeDetailProps) 
             <div className="grid grid-cols-2 gap-4">
               {recipe.prep_time && (
                 <div className="bg-secondary/50 rounded-lg p-4">
-                  <p className="text-sm text-muted-foreground">Prep Time</p>
-                  <p className="font-display text-xl font-semibold">{recipe.prep_time} min</p>
+                  <p className="text-sm text-muted-foreground">{t("recipe.prepTime")}</p>
+                  <p className="font-display text-xl font-semibold">{recipe.prep_time} {t("recipe.minutes")}</p>
                 </div>
               )}
               {recipe.cook_time && (
                 <div className="bg-secondary/50 rounded-lg p-4">
-                  <p className="text-sm text-muted-foreground">Cook Time</p>
-                  <p className="font-display text-xl font-semibold">{recipe.cook_time} min</p>
+                  <p className="text-sm text-muted-foreground">{t("recipe.cookTime")}</p>
+                  <p className="font-display text-xl font-semibold">{recipe.cook_time} {t("recipe.minutes")}</p>
                 </div>
               )}
             </div>
@@ -93,7 +104,7 @@ export function RecipeDetail({ recipe, open, onOpenChange }: RecipeDetailProps) 
 
           {recipe.ingredients.length > 0 && (
             <div>
-              <h3 className="font-display text-lg font-semibold mb-3">Ingredients</h3>
+              <h3 className="font-display text-lg font-semibold mb-3">{t("recipe.ingredients")}</h3>
               <ul className="space-y-2">
                 {recipe.ingredients.map((ingredient, index) => (
                   <li key={index} className="flex items-start gap-3">
@@ -107,7 +118,7 @@ export function RecipeDetail({ recipe, open, onOpenChange }: RecipeDetailProps) 
 
           {recipe.instructions.length > 0 && (
             <div>
-              <h3 className="font-display text-lg font-semibold mb-3">Instructions</h3>
+              <h3 className="font-display text-lg font-semibold mb-3">{t("recipe.instructions")}</h3>
               <ol className="space-y-4">
                 {recipe.instructions.map((instruction, index) => (
                   <li key={index} className="flex gap-4">
