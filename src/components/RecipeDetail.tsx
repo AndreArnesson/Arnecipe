@@ -1,8 +1,17 @@
+import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Users, ChefHat, Tag } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Clock, Users, ChefHat, Tag, Pencil, Trash2, Loader2, X, Plus, ImagePlus } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageContext";
-import { RecipeCategory } from "@/i18n/translations";
+import { useAuth } from "@/hooks/useAuth";
+import { RECIPE_CATEGORIES, RecipeCategory } from "@/i18n/translations";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Recipe {
   id: string;
@@ -16,6 +25,7 @@ interface Recipe {
   image_url?: string;
   category?: string | null;
   created_at: string;
+  user_id: string;
   profiles?: {
     display_name?: string;
   };
@@ -25,32 +35,269 @@ interface RecipeDetailProps {
   recipe: Recipe | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onRecipeUpdated?: () => void;
 }
 
-export function RecipeDetail({ recipe, open, onOpenChange }: RecipeDetailProps) {
+export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: RecipeDetailProps) {
   const { t, language } = useLanguage();
-  
+  const { user } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Edit state
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editIngredients, setEditIngredients] = useState<string[]>([]);
+  const [editInstructions, setEditInstructions] = useState<string[]>([]);
+  const [editPrepTime, setEditPrepTime] = useState("");
+  const [editCookTime, setEditCookTime] = useState("");
+  const [editServings, setEditServings] = useState("");
+  const [editCategory, setEditCategory] = useState<string>("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   if (!recipe) return null;
 
+  const isOwner = user?.id === recipe.user_id;
   const totalTime = (recipe.prep_time || 0) + (recipe.cook_time || 0);
+
+  const startEditing = () => {
+    setEditTitle(recipe.title);
+    setEditDescription(recipe.description || "");
+    setEditIngredients(recipe.ingredients.length > 0 ? [...recipe.ingredients] : [""]);
+    setEditInstructions(recipe.instructions.length > 0 ? [...recipe.instructions] : [""]);
+    setEditPrepTime(recipe.prep_time?.toString() || "");
+    setEditCookTime(recipe.cook_time?.toString() || "");
+    setEditServings(recipe.servings?.toString() || "");
+    setEditCategory(recipe.category || "");
+    setImagePreview(recipe.image_url || null);
+    setImageFile(null);
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setShowDeleteConfirm(false);
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setImagePreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!editTitle.trim()) return;
+    setIsSaving(true);
+    try {
+      let imageUrl = recipe.image_url;
+      if (imageFile && user) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage.from('recipe-images').upload(fileName, imageFile);
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage.from('recipe-images').getPublicUrl(fileName);
+          imageUrl = publicUrl;
+        }
+      }
+
+      const { error } = await supabase.from("recipes").update({
+        title: editTitle.trim(),
+        description: editDescription.trim() || null,
+        ingredients: editIngredients.filter(i => i.trim()),
+        instructions: editInstructions.filter(i => i.trim()),
+        prep_time: editPrepTime ? parseInt(editPrepTime) : null,
+        cook_time: editCookTime ? parseInt(editCookTime) : null,
+        servings: editServings ? parseInt(editServings) : null,
+        category: editCategory || null,
+        image_url: imageUrl,
+      }).eq("id", recipe.id);
+
+      if (error) {
+        toast.error(t("recipe.failedToUpdate"));
+        return;
+      }
+      toast.success(t("recipe.recipeUpdated"));
+      setIsEditing(false);
+      onRecipeUpdated?.();
+    } catch {
+      toast.error(t("recipe.failedToUpdate"));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase.from("recipes").delete().eq("id", recipe.id);
+      if (error) {
+        toast.error(t("recipe.failedToDelete"));
+        return;
+      }
+      toast.success(t("recipe.recipeDeleted"));
+      onOpenChange(false);
+      onRecipeUpdated?.();
+    } catch {
+      toast.error(t("recipe.failedToDelete"));
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <Dialog open={open} onOpenChange={(o) => { if (!o) cancelEditing(); onOpenChange(o); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl">{t("recipe.edit")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
+            {imagePreview ? (
+              <div className="relative">
+                <img src={imagePreview} alt="" className="w-full h-48 object-cover rounded-lg border" />
+                <Button type="button" variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()} className="absolute bottom-2 right-2">
+                  {t("addRecipe.changeImage")}
+                </Button>
+              </div>
+            ) : (
+              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full h-24 border-dashed gap-2">
+                <ImagePlus className="h-5 w-5" />
+                {t("addRecipe.uploadImage")}
+              </Button>
+            )}
+
+            <div className="space-y-2">
+              <Label>{t("addRecipe.recipeTitle")}</Label>
+              <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>{t("addRecipe.description")}</Label>
+              <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={2} />
+            </div>
+            <div className="space-y-2">
+              <Label>{t("addRecipe.categoryLabel")}</Label>
+              <Select value={editCategory} onValueChange={setEditCategory}>
+                <SelectTrigger><SelectValue placeholder={t("addRecipe.selectCategory")} /></SelectTrigger>
+                <SelectContent>
+                  {RECIPE_CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {language === "en" ? t(`category.${cat}` as any) : cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>{t("addRecipe.prepTimeLabel")}</Label>
+                <Input type="number" value={editPrepTime} onChange={(e) => setEditPrepTime(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("addRecipe.cookTimeLabel")}</Label>
+                <Input type="number" value={editCookTime} onChange={(e) => setEditCookTime(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("addRecipe.servingsLabel")}</Label>
+                <Input type="number" value={editServings} onChange={(e) => setEditServings(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Label>{t("addRecipe.ingredientsLabel")}</Label>
+              {editIngredients.map((ing, i) => (
+                <div key={i} className="flex gap-2">
+                  <Input value={ing} onChange={(e) => { const n = [...editIngredients]; n[i] = e.target.value; setEditIngredients(n); }} />
+                  {editIngredients.length > 1 && (
+                    <Button type="button" variant="ghost" size="icon" onClick={() => setEditIngredients(editIngredients.filter((_, j) => j !== i))}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" onClick={() => setEditIngredients([...editIngredients, ""])}>
+                <Plus className="h-4 w-4 mr-1" />{t("addRecipe.addIngredient")}
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              <Label>{t("addRecipe.instructionsLabel")}</Label>
+              {editInstructions.map((inst, i) => (
+                <div key={i} className="flex gap-2">
+                  <div className="flex items-center justify-center w-8 h-10 rounded-lg bg-primary/10 text-primary font-medium shrink-0">{i + 1}</div>
+                  <Textarea value={inst} onChange={(e) => { const n = [...editInstructions]; n[i] = e.target.value; setEditInstructions(n); }} rows={2} className="flex-1" />
+                  {editInstructions.length > 1 && (
+                    <Button type="button" variant="ghost" size="icon" onClick={() => setEditInstructions(editInstructions.filter((_, j) => j !== i))}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" onClick={() => setEditInstructions([...editInstructions, ""])}>
+                <Plus className="h-4 w-4 mr-1" />{t("addRecipe.addStep")}
+              </Button>
+            </div>
+
+            <div className="flex justify-between pt-4 border-t">
+              <Button variant="destructive" onClick={() => setShowDeleteConfirm(true)} disabled={isDeleting}>
+                <Trash2 className="h-4 w-4 mr-2" />{t("recipe.delete")}
+              </Button>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={cancelEditing}>{t("recipe.cancelEdit")}</Button>
+                <Button onClick={handleSave} disabled={isSaving || !editTitle.trim()}>
+                  {isSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  {t("recipe.save")}
+                </Button>
+              </div>
+            </div>
+
+            {showDeleteConfirm && (
+              <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+                <p className="text-sm mb-3">{t("recipe.deleteConfirm")}</p>
+                <div className="flex gap-2">
+                  <Button variant="destructive" size="sm" onClick={handleDelete} disabled={isDeleting}>
+                    {isDeleting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    {t("recipe.delete")}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setShowDeleteConfirm(false)}>{t("recipe.cancelEdit")}</Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display text-2xl pr-8">
-            {recipe.title}
-          </DialogTitle>
+          <div className="flex items-start justify-between pr-8">
+            <DialogTitle className="font-display text-2xl">
+              {recipe.title}
+            </DialogTitle>
+            {isOwner && (
+              <Button variant="ghost" size="icon" onClick={startEditing} title={t("recipe.edit")}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
           {recipe.image_url && (
             <div className="aspect-video rounded-xl overflow-hidden">
-              <img
-                src={recipe.image_url}
-                alt={recipe.title}
-                className="w-full h-full object-cover"
-              />
+              <img src={recipe.image_url} alt={recipe.title} className="w-full h-full object-cover" />
             </div>
           )}
 

@@ -13,6 +13,7 @@ interface RecipeCardProps {
   servings?: number;
   imageUrl?: string;
   category?: string | null;
+  creatorName?: string;
   onClick?: () => void;
 }
 
@@ -24,6 +25,7 @@ export function RecipeCard({
   servings,
   imageUrl,
   category,
+  creatorName,
   onClick,
 }: RecipeCardProps) {
   const { t, language } = useLanguage();
@@ -77,6 +79,11 @@ export function RecipeCard({
             </div>
           )}
         </div>
+        {creatorName && (
+          <p className="text-xs text-muted-foreground mt-2 italic">
+            {t("recipe.createdBy")} {creatorName}
+          </p>
+        )}
       </CardContent>
     </Card>
   );
