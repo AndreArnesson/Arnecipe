@@ -221,6 +221,7 @@ export default function Index() {
                   servings={recipe.servings}
                   imageUrl={recipe.image_url}
                   category={recipe.category}
+                  creatorName={recipe.profiles?.display_name}
                   onClick={() => handleRecipeClick(recipe)}
                 />
               </div>
@@ -234,6 +235,7 @@ export default function Index() {
         recipe={selectedRecipe}
         open={detailOpen}
         onOpenChange={setDetailOpen}
+        onRecipeUpdated={fetchRecipes}
       />
     </div>
   );

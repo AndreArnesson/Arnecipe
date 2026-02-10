@@ -26,6 +26,15 @@ export const translations = {
     "recipe.createdBy": "Skapad av",
     "recipe.category": "Kategori",
     "recipe.allCategories": "Alla kategorier",
+    "recipe.edit": "Redigera",
+    "recipe.save": "Spara",
+    "recipe.cancelEdit": "Avbryt",
+    "recipe.delete": "Ta bort",
+    "recipe.deleteConfirm": "Är du säker på att du vill ta bort detta recept?",
+    "recipe.recipeUpdated": "Recept uppdaterat!",
+    "recipe.recipeDeleted": "Recept borttaget!",
+    "recipe.failedToUpdate": "Kunde inte uppdatera recept",
+    "recipe.failedToDelete": "Kunde inte ta bort recept",
     
     // Categories
     "category.Förrätt": "Förrätt",
@@ -119,6 +128,15 @@ export const translations = {
     "recipe.createdBy": "Created by",
     "recipe.category": "Category",
     "recipe.allCategories": "All categories",
+    "recipe.edit": "Edit",
+    "recipe.save": "Save",
+    "recipe.cancelEdit": "Cancel",
+    "recipe.delete": "Delete",
+    "recipe.deleteConfirm": "Are you sure you want to delete this recipe?",
+    "recipe.recipeUpdated": "Recipe updated!",
+    "recipe.recipeDeleted": "Recipe deleted!",
+    "recipe.failedToUpdate": "Failed to update recipe",
+    "recipe.failedToDelete": "Failed to delete recipe",
     
     // Categories
     "category.Förrätt": "Appetizer",
