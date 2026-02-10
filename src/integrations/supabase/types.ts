@@ -14,6 +14,81 @@ export type Database = {
   }
   public: {
     Tables: {
+      group_invites: {
+        Row: {
+          id: string
+          group_id: string
+          invited_email: string
+          invited_by: string
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          group_id: string
+          invited_email: string
+          invited_by: string
+          status?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          group_id?: string
+          invited_email?: string
+          invited_by?: string
+          status?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      group_members: {
+        Row: {
+          id: string
+          group_id: string
+          user_id: string
+          role: string
+          joined_at: string
+        }
+        Insert: {
+          id?: string
+          group_id: string
+          user_id: string
+          role?: string
+          joined_at?: string
+        }
+        Update: {
+          id?: string
+          group_id?: string
+          user_id?: string
+          role?: string
+          joined_at?: string
+        }
+        Relationships: []
+      }
+      groups: {
+        Row: {
+          id: string
+          name: string
+          created_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          created_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -41,6 +116,24 @@ export type Database = {
         }
         Relationships: []
       }
+      recipe_group_shares: {
+        Row: {
+          id: string
+          recipe_id: string
+          group_id: string
+        }
+        Insert: {
+          id?: string
+          recipe_id: string
+          group_id: string
+        }
+        Update: {
+          id?: string
+          recipe_id?: string
+          group_id?: string
+        }
+        Relationships: []
+      }
       recipes: {
         Row: {
           category: string | null
@@ -56,6 +149,7 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          visibility: string
         }
         Insert: {
           category?: string | null
@@ -71,6 +165,7 @@ export type Database = {
           title: string
           updated_at?: string
           user_id: string
+          visibility?: string
         }
         Update: {
           category?: string | null
@@ -86,6 +181,7 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: []
       }

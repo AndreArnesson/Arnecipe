@@ -10,7 +10,7 @@ import { CategoryFilter } from "@/components/CategoryFilter";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChefHat, LogOut, Search, Loader2, BookOpen } from "lucide-react";
+import { ChefHat, LogOut, Search, Loader2, BookOpen, Users } from "lucide-react";
 import { toast } from "sonner";
 import { RecipeCategory } from "@/i18n/translations";
 
@@ -25,6 +25,7 @@ interface Recipe {
   servings?: number;
   image_url?: string;
   category?: string | null;
+  visibility?: string;
   created_at: string;
   user_id: string;
   profiles?: {
@@ -143,6 +144,9 @@ export default function Index() {
 
             <div className="flex items-center gap-2">
               <LanguageToggle />
+              <Button variant="ghost" size="icon" onClick={() => navigate("/groups")} title={t("groups.title")}>
+                <Users className="h-4 w-4" />
+              </Button>
               <AddRecipeDialog onRecipeAdded={fetchRecipes} />
               <Button variant="ghost" size="icon" onClick={signOut} title={t("auth.signOut")}>
                 <LogOut className="h-4 w-4" />

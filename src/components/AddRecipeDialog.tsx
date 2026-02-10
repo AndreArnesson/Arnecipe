@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { useVoiceRecipe } from "@/hooks/useVoiceRecipe";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { RECIPE_CATEGORIES, RecipeCategory } from "@/i18n/translations";
+import { VisibilitySelector } from "@/components/VisibilitySelector";
 
 interface AddRecipeDialogProps {
   onRecipeAdded?: () => void;
@@ -39,6 +40,8 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [visibility, setVisibility] = useState("group");
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
 
   const resetForm = () => {
     setTitle("");
@@ -53,6 +56,8 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
     setImagePreview(null);
     setEditedTranscription("");
     setShowTranscriptPreview(false);
+    setVisibility("group");
+    setSelectedGroupIds([]);
     clearTranscription();
   };
 
@@ -196,7 +201,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
     try {
       const imageUrl = await uploadImage(user.id);
       
-      const { error } = await supabase.from("recipes").insert({
+      const { data: recipeData, error } = await supabase.from("recipes").insert({
         user_id: user.id,
         title: title.trim(),
         description: description.trim() || null,
@@ -207,12 +212,22 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
         servings: servings ? parseInt(servings) : null,
         category: category || null,
         image_url: imageUrl,
-      });
+        visibility,
+      }).select().single();
 
       if (error) {
         console.error("Save error:", error);
         toast.error(t("message.failedToSave"));
         return;
+      }
+
+      // If visibility is 'group', create group shares
+      if (visibility === "group" && selectedGroupIds.length > 0 && recipeData) {
+        const shares = selectedGroupIds.map((groupId) => ({
+          recipe_id: recipeData.id,
+          group_id: groupId,
+        }));
+        await supabase.from("recipe_group_shares").insert(shares);
       }
 
       toast.success(t("message.recipeSaved"));
@@ -482,6 +497,14 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Visibility */}
+          <VisibilitySelector
+            visibility={visibility}
+            onVisibilityChange={setVisibility}
+            selectedGroupIds={selectedGroupIds}
+            onGroupsChange={setSelectedGroupIds}
+          />
 
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">

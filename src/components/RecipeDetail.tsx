@@ -6,12 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, Users, ChefHat, Tag, Pencil, Trash2, Loader2, X, Plus, ImagePlus } from "lucide-react";
+import { Clock, Users, ChefHat, Tag, Pencil, Trash2, Loader2, X, Plus, ImagePlus, Lock, Globe } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { RECIPE_CATEGORIES, RecipeCategory } from "@/i18n/translations";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { VisibilitySelector } from "@/components/VisibilitySelector";
 
 interface Recipe {
   id: string;
@@ -24,6 +25,7 @@ interface Recipe {
   servings?: number;
   image_url?: string;
   category?: string | null;
+  visibility?: string;
   created_at: string;
   user_id: string;
   profiles?: {
@@ -58,6 +60,8 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [editVisibility, setEditVisibility] = useState("group");
+  const [editGroupIds, setEditGroupIds] = useState<string[]>([]);
 
   if (!recipe) return null;
 
@@ -75,7 +79,20 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
     setEditCategory(recipe.category || "");
     setImagePreview(recipe.image_url || null);
     setImageFile(null);
+    setEditVisibility(recipe.visibility || "group");
+    // Fetch existing group shares
+    fetchExistingShares(recipe.id);
     setIsEditing(true);
+  };
+
+  const fetchExistingShares = async (recipeId: string) => {
+    const { data } = await supabase
+      .from("recipe_group_shares")
+      .select("group_id")
+      .eq("recipe_id", recipeId);
+    if (data) {
+      setEditGroupIds(data.map((s) => s.group_id));
+    }
   };
 
   const cancelEditing = () => {
@@ -118,12 +135,28 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
         servings: editServings ? parseInt(editServings) : null,
         category: editCategory || null,
         image_url: imageUrl,
+        visibility: editVisibility,
       }).eq("id", recipe.id);
 
       if (error) {
         toast.error(t("recipe.failedToUpdate"));
         return;
       }
+
+      // Update group shares
+      await supabase
+        .from("recipe_group_shares")
+        .delete()
+        .eq("recipe_id", recipe.id);
+
+      if (editVisibility === "group" && editGroupIds.length > 0) {
+        const shares = editGroupIds.map((groupId) => ({
+          recipe_id: recipe.id,
+          group_id: groupId,
+        }));
+        await supabase.from("recipe_group_shares").insert(shares);
+      }
+
       toast.success(t("recipe.recipeUpdated"));
       setIsEditing(false);
       onRecipeUpdated?.();
@@ -197,6 +230,12 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
                 </SelectContent>
               </Select>
             </div>
+            <VisibilitySelector
+              visibility={editVisibility}
+              onVisibilityChange={setEditVisibility}
+              selectedGroupIds={editGroupIds}
+              onGroupsChange={setEditGroupIds}
+            />
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>{t("addRecipe.prepTimeLabel")}</Label>
@@ -328,6 +367,14 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
               <Badge variant="outline" className="gap-1.5 py-1.5 px-3">
                 <ChefHat className="h-3.5 w-3.5" />
                 {t("recipe.createdBy")} {recipe.profiles.display_name}
+              </Badge>
+            )}
+            {recipe.visibility && (
+              <Badge variant="outline" className="gap-1.5 py-1.5 px-3">
+                {recipe.visibility === "public" && <Globe className="h-3.5 w-3.5" />}
+                {recipe.visibility === "group" && <Users className="h-3.5 w-3.5" />}
+                {recipe.visibility === "private" && <Lock className="h-3.5 w-3.5" />}
+                {t(`visibility.${recipe.visibility}` as any)}
               </Badge>
             )}
           </div>
