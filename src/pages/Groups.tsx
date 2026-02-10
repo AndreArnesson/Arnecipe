@@ -540,7 +540,7 @@ export default function Groups() {
                             className="gap-1"
                           >
                             {member.role === "owner" && <Crown className="h-3 w-3" />}
-                            {member.profile?.display_name || member.user_id.slice(0, 8)}
+                            {member.profile?.display_name || t("groups.member")}
                             <span className="text-xs opacity-70">
                               ({member.role === "owner" ? t("groups.owner") : t("groups.member")})
                             </span>

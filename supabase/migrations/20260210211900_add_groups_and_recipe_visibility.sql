@@ -30,9 +30,12 @@ CREATE TABLE public.group_invites (
   invited_email TEXT NOT NULL,
   invited_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  UNIQUE(group_id, invited_email, status)
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
+
+-- Only allow one pending invite per email per group
+CREATE UNIQUE INDEX unique_pending_invite ON public.group_invites (group_id, invited_email)
+  WHERE status = 'pending';
 
 -- Enable RLS on group_invites
 ALTER TABLE public.group_invites ENABLE ROW LEVEL SECURITY;
