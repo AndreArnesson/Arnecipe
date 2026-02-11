@@ -10,6 +10,7 @@ import { CategoryFilter } from "@/components/CategoryFilter";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { ChefHat, LogOut, Search, Loader2, BookOpen, Users } from "lucide-react";
 import { toast } from "sonner";
 import { RecipeCategory } from "@/i18n/translations";
@@ -26,6 +27,7 @@ interface Recipe {
   image_url?: string;
   category?: string | null;
   visibility?: string;
+  rating?: string | null;
   created_at: string;
   user_id: string;
   profiles?: {
@@ -42,6 +44,7 @@ export default function Index() {
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCreator, setSelectedCreator] = useState<string | null>(null);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -56,7 +59,6 @@ export default function Index() {
 
     setIsLoadingRecipes(true);
     try {
-      // Fetch recipes first
       const { data: recipesData, error: recipesError } = await supabase
         .from("recipes")
         .select("*")
@@ -97,14 +99,22 @@ export default function Index() {
     }
   }, [user]);
 
+  // Get unique creators for filter tags
+  const creators = [...new Map(
+    recipes
+      .filter(r => r.profiles?.display_name)
+      .map(r => [r.user_id, r.profiles!.display_name!])
+  ).entries()].map(([userId, name]) => ({ userId, name }));
+
   const filteredRecipes = recipes.filter((recipe) => {
     const matchesSearch = 
       recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       recipe.description?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesCategory = selectedCategory === null || recipe.category === selectedCategory;
+    const matchesCreator = selectedCreator === null || recipe.user_id === selectedCreator;
     
-    return matchesSearch && matchesCategory;
+    return matchesSearch && matchesCategory && matchesCreator;
   });
 
   const handleRecipeClick = (recipe: Recipe) => {
@@ -128,21 +138,21 @@ export default function Index() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center">
-                <ChefHat className="h-5 w-5 text-primary-foreground" />
+        <div className="container mx-auto px-4 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full gradient-primary flex items-center justify-center shrink-0">
+                <ChefHat className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
               </div>
-              <div>
-                <h1 className="font-display text-xl font-bold text-foreground">
+              <div className="min-w-0">
+                <h1 className="font-display text-base sm:text-xl font-bold text-foreground truncate">
                   {t("app.title")}
                 </h1>
-                <p className="text-xs text-muted-foreground">{t("app.subtitle")}</p>
+                <p className="text-xs text-muted-foreground hidden sm:block">{t("app.subtitle")}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               <LanguageToggle />
               <Button variant="ghost" size="icon" onClick={() => navigate("/groups")} title={t("groups.title")}>
                 <Users className="h-4 w-4" />
@@ -157,38 +167,61 @@ export default function Index() {
       </header>
 
       {/* Hero Section */}
-      <section className="gradient-hero py-12 px-4">
+      <section className="gradient-hero py-6 sm:py-12 px-4">
         <div className="container mx-auto text-center">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-3 sm:mb-4">
             {t("hero.title")} <span className="text-gradient">{t("hero.titleHighlight")}</span>
           </h2>
-          <p className="text-muted-foreground max-w-md mx-auto mb-8">
+          <p className="text-muted-foreground max-w-md mx-auto mb-6 sm:mb-8 text-sm sm:text-base">
             {t("hero.description")}
           </p>
 
           {/* Search */}
-          <div className="relative max-w-md mx-auto mb-6">
+          <div className="relative max-w-md mx-auto mb-4 sm:mb-6">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder={t("hero.search")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-11 h-12 bg-background/80 backdrop-blur-sm"
+              className="pl-11 h-11 sm:h-12 bg-background/80 backdrop-blur-sm"
             />
           </div>
 
           {/* Category Filter */}
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-3xl mx-auto mb-3">
             <CategoryFilter
               selectedCategory={selectedCategory}
               onCategoryChange={setSelectedCategory}
             />
           </div>
+
+          {/* Creator filter tags */}
+          {creators.length > 1 && (
+            <div className="flex flex-wrap justify-center gap-2 max-w-3xl mx-auto">
+              <Badge
+                variant={selectedCreator === null ? "default" : "outline"}
+                className="cursor-pointer"
+                onClick={() => setSelectedCreator(null)}
+              >
+                {t("recipe.allCreators")}
+              </Badge>
+              {creators.map(({ userId, name }) => (
+                <Badge
+                  key={userId}
+                  variant={selectedCreator === userId ? "default" : "outline"}
+                  className="cursor-pointer"
+                  onClick={() => setSelectedCreator(userId)}
+                >
+                  {name}
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
       {/* Recipes Grid */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-6 sm:py-8">
         {isLoadingRecipes ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -199,17 +232,17 @@ export default function Index() {
               <BookOpen className="h-8 w-8 text-muted-foreground" />
             </div>
             <h3 className="font-display text-xl font-semibold text-foreground mb-2">
-              {searchQuery || selectedCategory ? t("recipe.noRecipesFound") : t("recipe.noRecipes")}
+              {searchQuery || selectedCategory || selectedCreator ? t("recipe.noRecipesFound") : t("recipe.noRecipes")}
             </h3>
             <p className="text-muted-foreground mb-6">
-              {searchQuery || selectedCategory
+              {searchQuery || selectedCategory || selectedCreator
                 ? t("recipe.tryDifferentSearch")
                 : t("recipe.noRecipesDescription")}
             </p>
-            {!searchQuery && !selectedCategory && <AddRecipeDialog onRecipeAdded={fetchRecipes} />}
+            {!searchQuery && !selectedCategory && !selectedCreator && <AddRecipeDialog onRecipeAdded={fetchRecipes} />}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {filteredRecipes.map((recipe, index) => (
               <div
                 key={recipe.id}
@@ -225,6 +258,7 @@ export default function Index() {
                   servings={recipe.servings}
                   imageUrl={recipe.image_url}
                   category={recipe.category}
+                  rating={recipe.rating}
                   creatorName={recipe.profiles?.display_name}
                   onClick={() => handleRecipeClick(recipe)}
                 />

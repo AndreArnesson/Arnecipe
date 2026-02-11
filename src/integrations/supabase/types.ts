@@ -14,6 +14,94 @@ export type Database = {
   }
   public: {
     Tables: {
+      group_invites: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          invited_by: string
+          invited_email: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          invited_by: string
+          invited_email: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          invited_by?: string
+          invited_email?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_invites_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_members: {
+        Row: {
+          group_id: string
+          id: string
+          joined_at: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -41,6 +129,39 @@ export type Database = {
         }
         Relationships: []
       }
+      recipe_group_shares: {
+        Row: {
+          group_id: string
+          id: string
+          recipe_id: string
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          recipe_id: string
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          recipe_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_group_shares_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_group_shares_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipes: {
         Row: {
           category: string | null
@@ -52,10 +173,12 @@ export type Database = {
           ingredients: string[]
           instructions: string[]
           prep_time: number | null
+          rating: string | null
           servings: number | null
           title: string
           updated_at: string
           user_id: string
+          visibility: string
         }
         Insert: {
           category?: string | null
@@ -67,10 +190,12 @@ export type Database = {
           ingredients?: string[]
           instructions?: string[]
           prep_time?: number | null
+          rating?: string | null
           servings?: number | null
           title: string
           updated_at?: string
           user_id: string
+          visibility?: string
         }
         Update: {
           category?: string | null
@@ -82,10 +207,12 @@ export type Database = {
           ingredients?: string[]
           instructions?: string[]
           prep_time?: number | null
+          rating?: string | null
           servings?: number | null
           title?: string
           updated_at?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: []
       }
@@ -94,7 +221,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_group_member: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

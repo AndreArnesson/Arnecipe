@@ -42,6 +42,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [visibility, setVisibility] = useState("group");
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [rating, setRating] = useState("");
 
   const resetForm = () => {
     setTitle("");
@@ -58,6 +59,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
     setShowTranscriptPreview(false);
     setVisibility("group");
     setSelectedGroupIds([]);
+    setRating("");
     clearTranscription();
   };
 
@@ -213,6 +215,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
         category: category || null,
         image_url: imageUrl,
         visibility,
+        rating: rating.trim() || null,
       }).select().single();
 
       if (error) {
@@ -443,31 +446,12 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
 
           <div className="space-y-2">
             <Label htmlFor="title">{t("addRecipe.recipeTitle")}</Label>
-            <div className="flex gap-2">
-              <Input
-                id="title"
-                placeholder={t("addRecipe.titlePlaceholder")}
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleGenerateWithAI}
-                disabled={isGenerating || !title.trim() || isListening || isRefining}
-                className="shrink-0"
-              >
-                {isGenerating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4" />
-                )}
-                <span className="ml-2 hidden sm:inline">{t("addRecipe.aiGenerate")}</span>
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t("addRecipe.aiGenerateHint")}
-            </p>
+            <Input
+              id="title"
+              placeholder={t("addRecipe.titlePlaceholder")}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
           </div>
 
           <div className="space-y-2">
@@ -506,7 +490,16 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
             onGroupsChange={setSelectedGroupIds}
           />
 
-          <div className="grid grid-cols-3 gap-4">
+          {/* Rating */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">{t("recipe.rating")}</Label>
+            <Input
+              value={rating}
+              onChange={(e) => setRating(e.target.value)}
+              placeholder={t("recipe.ratingPlaceholder")}
+            />
+          </div>
+
             <div className="space-y-2">
               <Label htmlFor="prepTime">{t("addRecipe.prepTimeLabel")}</Label>
               <Input

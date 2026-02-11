@@ -1,8 +1,7 @@
-import { Clock, Users } from "lucide-react";
+import { Clock, Users, Star } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/i18n/LanguageContext";
-import { RecipeCategory } from "@/i18n/translations";
 
 interface RecipeCardProps {
   id: string;
@@ -13,6 +12,7 @@ interface RecipeCardProps {
   servings?: number;
   imageUrl?: string;
   category?: string | null;
+  rating?: string | null;
   creatorName?: string;
   onClick?: () => void;
 }
@@ -25,6 +25,7 @@ export function RecipeCard({
   servings,
   imageUrl,
   category,
+  rating,
   creatorName,
   onClick,
 }: RecipeCardProps) {
@@ -56,16 +57,16 @@ export function RecipeCard({
           </Badge>
         )}
       </div>
-      <CardContent className="p-4">
-        <h3 className="font-display text-lg font-semibold text-foreground mb-2 line-clamp-1">
+      <CardContent className="p-3 sm:p-4">
+        <h3 className="font-display text-base sm:text-lg font-semibold text-foreground mb-1 sm:mb-2 line-clamp-1">
           {title}
         </h3>
         {description && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+          <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 mb-2 sm:mb-3">
             {description}
           </p>
         )}
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground flex-wrap">
           {totalTime > 0 && (
             <div className="flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" />
@@ -78,10 +79,16 @@ export function RecipeCard({
               <span>{servings} {t("recipe.servings")}</span>
             </div>
           )}
+          {rating && (
+            <div className="flex items-center gap-1">
+              <Star className="h-3.5 w-3.5 fill-primary text-primary" />
+              <span className="text-foreground font-medium">{rating}</span>
+            </div>
+          )}
         </div>
         {creatorName && (
           <p className="text-xs text-muted-foreground mt-2 italic">
-            {t("recipe.createdBy")} {creatorName}
+            {creatorName}
           </p>
         )}
       </CardContent>
