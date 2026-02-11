@@ -35,6 +35,9 @@ export const translations = {
     "recipe.recipeDeleted": "Recept borttaget!",
     "recipe.failedToUpdate": "Kunde inte uppdatera recept",
     "recipe.failedToDelete": "Kunde inte ta bort recept",
+    "recipe.rating": "Betyg",
+    "recipe.ratingPlaceholder": "t.ex. 10/10, muminkex, fantastisk!",
+    "recipe.allCreators": "Alla",
     
     // Categories
     "category.Förrätt": "Förrätt",
@@ -184,6 +187,9 @@ export const translations = {
     "recipe.recipeDeleted": "Recipe deleted!",
     "recipe.failedToUpdate": "Failed to update recipe",
     "recipe.failedToDelete": "Failed to delete recipe",
+    "recipe.rating": "Rating",
+    "recipe.ratingPlaceholder": "e.g. 10/10, amazing, must try!",
+    "recipe.allCreators": "All",
     
     // Categories
     "category.Förrätt": "Appetizer",

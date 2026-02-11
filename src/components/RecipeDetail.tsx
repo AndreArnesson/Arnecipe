@@ -6,13 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, Users, ChefHat, Tag, Pencil, Trash2, Loader2, X, Plus, ImagePlus, Lock, Globe } from "lucide-react";
+import { Clock, Users, ChefHat, Tag, Pencil, Trash2, Loader2, X, Plus, ImagePlus, Lock, Globe, Star } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { RECIPE_CATEGORIES, RecipeCategory } from "@/i18n/translations";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { VisibilitySelector } from "@/components/VisibilitySelector";
+import { LinkifyText } from "@/components/LinkifyText";
 
 interface Recipe {
   id: string;
@@ -26,6 +27,7 @@ interface Recipe {
   image_url?: string;
   category?: string | null;
   visibility?: string;
+  rating?: string | null;
   created_at: string;
   user_id: string;
   profiles?: {
@@ -57,6 +59,7 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
   const [editCookTime, setEditCookTime] = useState("");
   const [editServings, setEditServings] = useState("");
   const [editCategory, setEditCategory] = useState<string>("");
+  const [editRating, setEditRating] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,10 +80,10 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
     setEditCookTime(recipe.cook_time?.toString() || "");
     setEditServings(recipe.servings?.toString() || "");
     setEditCategory(recipe.category || "");
+    setEditRating(recipe.rating || "");
     setImagePreview(recipe.image_url || null);
     setImageFile(null);
     setEditVisibility(recipe.visibility || "group");
-    // Fetch existing group shares
     fetchExistingShares(recipe.id);
     setIsEditing(true);
   };
@@ -134,6 +137,7 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
         cook_time: editCookTime ? parseInt(editCookTime) : null,
         servings: editServings ? parseInt(editServings) : null,
         category: editCategory || null,
+        rating: editRating.trim() || null,
         image_url: imageUrl,
         visibility: editVisibility,
       }).eq("id", recipe.id);
@@ -230,6 +234,20 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Rating */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Star className="h-4 w-4" />
+                {t("recipe.rating")}
+              </Label>
+              <Input
+                value={editRating}
+                onChange={(e) => setEditRating(e.target.value)}
+                placeholder={t("recipe.ratingPlaceholder")}
+              />
+            </div>
+
             <VisibilitySelector
               visibility={editVisibility}
               onVisibilityChange={setEditVisibility}
@@ -286,7 +304,7 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
               </Button>
             </div>
 
-            <div className="flex justify-between pt-4 border-t">
+            <div className="flex flex-col sm:flex-row justify-between pt-4 border-t gap-3">
               <Button variant="destructive" onClick={() => setShowDeleteConfirm(true)} disabled={isDeleting}>
                 <Trash2 className="h-4 w-4 mr-2" />{t("recipe.delete")}
               </Button>
@@ -341,10 +359,20 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
           )}
 
           {recipe.description && (
-            <p className="text-muted-foreground">{recipe.description}</p>
+            <p className="text-muted-foreground">
+              <LinkifyText text={recipe.description} />
+            </p>
           )}
 
-          <div className="flex flex-wrap gap-3">
+          {recipe.rating && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+              <Star className="h-4 w-4 text-primary fill-primary" />
+              <span className="font-medium text-foreground">{t("recipe.rating")}:</span>
+              <span className="text-foreground">{recipe.rating}</span>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             {totalTime > 0 && (
               <Badge variant="secondary" className="gap-1.5 py-1.5 px-3">
                 <Clock className="h-3.5 w-3.5" />
@@ -366,15 +394,7 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
             {recipe.profiles?.display_name && (
               <Badge variant="outline" className="gap-1.5 py-1.5 px-3">
                 <ChefHat className="h-3.5 w-3.5" />
-                {t("recipe.createdBy")} {recipe.profiles.display_name}
-              </Badge>
-            )}
-            {recipe.visibility && (
-              <Badge variant="outline" className="gap-1.5 py-1.5 px-3">
-                {recipe.visibility === "public" && <Globe className="h-3.5 w-3.5" />}
-                {recipe.visibility === "group" && <Users className="h-3.5 w-3.5" />}
-                {recipe.visibility === "private" && <Lock className="h-3.5 w-3.5" />}
-                {t(`visibility.${recipe.visibility}` as any)}
+                {recipe.profiles.display_name}
               </Badge>
             )}
           </div>
@@ -403,7 +423,7 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
                 {recipe.ingredients.map((ingredient, index) => (
                   <li key={index} className="flex items-start gap-3">
                     <span className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
-                    <span>{ingredient}</span>
+                    <LinkifyText text={ingredient} />
                   </li>
                 ))}
               </ul>
@@ -419,7 +439,9 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
                     <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold shrink-0">
                       {index + 1}
                     </span>
-                    <p className="pt-1">{instruction}</p>
+                    <p className="pt-1">
+                      <LinkifyText text={instruction} />
+                    </p>
                   </li>
                 ))}
               </ol>
