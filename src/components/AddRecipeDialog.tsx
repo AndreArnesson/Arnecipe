@@ -500,6 +500,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
             />
           </div>
 
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="prepTime">{t("addRecipe.prepTimeLabel")}</Label>
               <Input
