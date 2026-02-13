@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Sparkles, Loader2, X, Mic, MicOff, Check, Edit3, Globe, ImagePlus } from "lucide-react";
+import { Plus, Sparkles, Loader2, X, Mic, MicOff, Check, Edit3, ImagePlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -24,7 +24,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
   const [open, setOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const { isListening, isRefining, transcript, interimTranscript, isSupported, language: voiceLang, setLanguage: setVoiceLang, startListening, stopListening, refineTranscription, clearTranscription } = useVoiceRecipe();
+  const { isRecording, isTranscribing, isRefining, transcript, startRecording, stopRecording, refineTranscription, clearTranscription, error: voiceError } = useVoiceRecipe();
   const [editedTranscription, setEditedTranscription] = useState("");
   const [showTranscriptPreview, setShowTranscriptPreview] = useState(false);
 
@@ -149,15 +149,15 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
     }
   };
 
-  const handleVoiceToggle = () => {
-    if (isListening) {
-      stopListening();
-      if (transcript.trim()) {
-        setEditedTranscription(transcript);
+  const handleVoiceToggle = async () => {
+    if (isRecording) {
+      const text = await stopRecording();
+      if (text?.trim()) {
+        setEditedTranscription(text);
         setShowTranscriptPreview(true);
       }
     } else {
-      startListening();
+      startRecording();
       setShowTranscriptPreview(false);
     }
   };
@@ -284,7 +284,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
 
         <div className="space-y-6 py-4">
           {/* Transcription Preview */}
-          {showTranscriptPreview && !isListening && (
+          {showTranscriptPreview && !isRecording && !isTranscribing && (
             <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
               <div className="flex items-center gap-2 mb-2">
                 <Edit3 className="h-4 w-4 text-primary" />
@@ -333,64 +333,51 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
                 <div>
                   <h3 className="font-medium text-foreground">{t("addRecipe.voiceInput")}</h3>
                   <p className="text-xs text-muted-foreground">
-                    {isListening 
+                    {isRecording 
                       ? t("addRecipe.listening")
+                      : isTranscribing
+                      ? t("addRecipe.transcribing") || "Transcribing..."
                       : t("addRecipe.dictateHint")}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setVoiceLang(voiceLang === "sv-SE" ? "en-US" : "sv-SE")}
-                    disabled={isListening}
-                    className="gap-1 text-xs"
-                  >
-                    <Globe className="h-3 w-3" />
-                    {voiceLang === "sv-SE" ? "🇸🇪 SV" : "🇺🇸 EN"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={isListening ? "destructive" : "outline"}
+                    variant={isRecording ? "destructive" : "outline"}
                     size="lg"
                     onClick={handleVoiceToggle}
-                    disabled={!isSupported || isGenerating || isSaving}
+                    disabled={isTranscribing || isGenerating || isSaving}
                     className="gap-2"
                   >
-                    {isListening ? (
+                    {isTranscribing ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : isRecording ? (
                       <MicOff className="h-5 w-5" />
                     ) : (
                       <Mic className="h-5 w-5" />
                     )}
-                    {isListening ? t("addRecipe.stop") : t("addRecipe.record")}
+                    {isTranscribing ? (t("addRecipe.transcribing") || "Transcribing...") : isRecording ? t("addRecipe.stop") : t("addRecipe.record")}
                   </Button>
                 </div>
               </div>
               
-              {!isSupported && (
-                <p className="text-xs text-destructive">
-                  {t("addRecipe.speechNotSupported")}
-                </p>
-              )}
-              
-              {isListening && (
+              {isRecording && (
                 <>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="relative flex h-3 w-3">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
                     </span>
-                    <span className="text-sm text-destructive font-medium">Listening...</span>
+                    <span className="text-sm text-destructive font-medium">{t("addRecipe.listening")}</span>
                   </div>
                   <div className="p-3 rounded bg-background border text-sm min-h-[60px]">
-                    {transcript && <span>{transcript} </span>}
-                    {interimTranscript && <span className="text-muted-foreground">{interimTranscript}</span>}
-                    {!transcript && !interimTranscript && (
-                      <span className="text-muted-foreground italic">{t("addRecipe.startSpeaking")}</span>
-                    )}
+                    <span className="text-muted-foreground italic">{t("addRecipe.startSpeaking")}</span>
                   </div>
                 </>
+              )}
+
+              {voiceError && (
+                <p className="text-xs text-destructive mt-2">{voiceError}</p>
               )}
             </div>
           )}

@@ -63,7 +63,8 @@ export const translations = {
     // Add Recipe Dialog
     "addRecipe.title": "Lägg till nytt recept",
     "addRecipe.voiceInput": "Röstinmatning",
-    "addRecipe.listening": "Lyssnar... Tala in ditt recept, klicka sedan Stoppa",
+    "addRecipe.listening": "Spelar in... Tala in ditt recept, klicka sedan Stoppa",
+    "addRecipe.transcribing": "Transkriberar...",
     "addRecipe.dictateHint": "Diktera ingredienser och steg naturligt",
     "addRecipe.startSpeaking": "Börja prata...",
     "addRecipe.reviewTranscription": "Granska transkription",
@@ -228,7 +229,8 @@ export const translations = {
     // Add Recipe Dialog
     "addRecipe.title": "Add New Recipe",
     "addRecipe.voiceInput": "Voice Input",
-    "addRecipe.listening": "Listening... Speak your recipe, then click Stop",
+    "addRecipe.listening": "Recording... Speak your recipe, then click Stop",
+    "addRecipe.transcribing": "Transcribing...",
     "addRecipe.dictateHint": "Dictate ingredients and steps naturally",
     "addRecipe.startSpeaking": "Start speaking...",
     "addRecipe.reviewTranscription": "Review Transcription",
