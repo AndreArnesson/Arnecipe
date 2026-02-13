@@ -1,17 +1,14 @@
 import { useState, useCallback } from "react";
-import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
+import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { toast } from "sonner";
 
 interface UseVoiceRecipeResult {
-  isListening: boolean;
+  isRecording: boolean;
+  isTranscribing: boolean;
   isRefining: boolean;
   transcript: string;
-  interimTranscript: string;
-  isSupported: boolean;
-  language: string;
-  setLanguage: (lang: string) => void;
-  startListening: () => void;
-  stopListening: () => void;
+  startRecording: () => void;
+  stopRecording: () => Promise<string | null>;
   refineTranscription: (text: string) => Promise<RecipeData | null>;
   clearTranscription: () => void;
   error: string | null;
@@ -29,30 +26,61 @@ interface RecipeData {
 }
 
 export function useVoiceRecipe(): UseVoiceRecipeResult {
-  const {
-    isListening,
-    transcript,
-    interimTranscript,
-    startListening: startRecognition,
-    stopListening: stopRecognition,
-    resetTranscript,
-    isSupported,
-    error: recognitionError,
-    language,
-    setLanguage,
-  } = useSpeechRecognition();
-
+  const { isRecording, startRecording: startRec, stopRecording: stopRec, error: recorderError } = useAudioRecorder();
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
+  const [transcript, setTranscript] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const startListening = useCallback(() => {
+  const startRecording = useCallback(() => {
     setError(null);
-    startRecognition();
-  }, [startRecognition]);
+    setTranscript("");
+    startRec();
+  }, [startRec]);
 
-  const stopListening = useCallback(() => {
-    stopRecognition();
-  }, [stopRecognition]);
+  const stopRecording = useCallback(async (): Promise<string | null> => {
+    const audioBlob = await stopRec();
+    if (!audioBlob) return null;
+
+    setIsTranscribing(true);
+    setError(null);
+
+    try {
+      toast.info("Transcribing audio...");
+
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "recording.webm");
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcribe-audio`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Transcription failed");
+      }
+
+      const data = await response.json();
+      const text = data.text?.trim() || "";
+      setTranscript(text);
+      toast.success("Transcription complete!");
+      return text;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Transcription failed";
+      setError(message);
+      toast.error(message);
+      return null;
+    } finally {
+      setIsTranscribing(false);
+    }
+  }, [stopRec]);
 
   const refineTranscription = useCallback(async (text: string): Promise<RecipeData | null> => {
     setIsRefining(true);
@@ -80,7 +108,7 @@ export function useVoiceRecipe(): UseVoiceRecipeResult {
 
       const recipe = await refineResponse.json();
       toast.success("Recipe created!");
-      resetTranscript();
+      setTranscript("");
       return recipe;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Refinement failed";
@@ -90,25 +118,22 @@ export function useVoiceRecipe(): UseVoiceRecipeResult {
     } finally {
       setIsRefining(false);
     }
-  }, [resetTranscript]);
+  }, []);
 
   const clearTranscription = useCallback(() => {
-    resetTranscript();
+    setTranscript("");
     setError(null);
-  }, [resetTranscript]);
+  }, []);
 
   return {
-    isListening,
+    isRecording,
+    isTranscribing,
     isRefining,
     transcript,
-    interimTranscript,
-    isSupported,
-    language,
-    setLanguage,
-    startListening,
-    stopListening,
+    startRecording,
+    stopRecording,
     refineTranscription,
     clearTranscription,
-    error: error || recognitionError,
+    error: error || recorderError,
   };
 }
