@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { ChefHat, LogOut, Search, Loader2, BookOpen, Users } from "lucide-react";
 import { toast } from "sonner";
 import { RecipeCategory } from "@/i18n/translations";
+import { PendingInviteBanner } from "@/components/PendingInviteBanner";
 
 interface Recipe {
   id: string;
@@ -173,6 +174,11 @@ export default function Index() {
           </div>
         </div>
       </header>
+
+      {/* Pending Invite Banner */}
+      <div className="container mx-auto px-4 pt-4">
+        <PendingInviteBanner />
+      </div>
 
       {/* Hero Section */}
       <section className="gradient-hero py-6 sm:py-12 px-4">

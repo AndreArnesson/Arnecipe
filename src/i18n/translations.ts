@@ -133,6 +133,10 @@ export const translations = {
     "groups.failedToRespond": "Kunde inte svara på inbjudan",
     "groups.backToRecipes": "Tillbaka till recept",
 
+    // Invite banner
+    "invite.pendingBanner": "Du har {count} väntande gruppinbjudningar",
+    "invite.viewInvites": "Visa",
+
     // Visibility
     "visibility.label": "Synlighet",
     "visibility.private": "Privat",
@@ -286,6 +290,10 @@ export const translations = {
     "groups.inviteDeclined": "Invite declined",
     "groups.failedToRespond": "Failed to respond to invite",
     "groups.backToRecipes": "Back to Recipes",
+
+    // Invite banner
+    "invite.pendingBanner": "You have {count} pending group invitations",
+    "invite.viewInvites": "View",
 
     // Visibility
     "visibility.label": "Visibility",
