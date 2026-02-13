@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { RecipeCard } from "@/components/RecipeCard";
 import { RecipeDetail } from "@/components/RecipeDetail";
 import { AddRecipeDialog } from "@/components/AddRecipeDialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CategoryFilter } from "@/components/CategoryFilter";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Button } from "@/components/ui/button";
@@ -209,8 +210,8 @@ export default function Index() {
             />
           </div>
 
-          {/* Source filter */}
-          <div className="flex flex-wrap justify-center gap-2 max-w-3xl mx-auto mb-3">
+          {/* Source filter + Creator dropdown */}
+          <div className="flex flex-wrap justify-center items-center gap-2 max-w-3xl mx-auto mb-3">
             <Badge
               variant={selectedSource === "all" ? "default" : "outline"}
               className="cursor-pointer"
@@ -232,6 +233,25 @@ export default function Index() {
             >
               {t("recipe.groupRecipes")}
             </Badge>
+
+            {creators.length > 1 && (
+              <Select
+                value={selectedCreator || "all"}
+                onValueChange={(v) => setSelectedCreator(v === "all" ? null : v)}
+              >
+                <SelectTrigger className="w-[180px] h-8 bg-background">
+                  <SelectValue placeholder={t("recipe.filterByCreator")} />
+                </SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  <SelectItem value="all">{t("recipe.allMembers")}</SelectItem>
+                  {creators.map((c) => (
+                    <SelectItem key={c.userId} value={c.userId}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
         </div>

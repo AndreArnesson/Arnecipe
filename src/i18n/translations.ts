@@ -40,6 +40,13 @@ export const translations = {
     "recipe.allCreators": "Alla",
     "recipe.myRecipes": "Mina recept",
     "recipe.groupRecipes": "Gruppens recept",
+    "recipe.filterByCreator": "Filtrera på person",
+    "recipe.allMembers": "Alla medlemmar",
+    "recipe.transferOwnership": "Överför ägarskap",
+    "recipe.transferTo": "Överför till",
+    "recipe.transferConfirm": "Är du säker? Du förlorar rätten att redigera receptet.",
+    "recipe.transferSuccess": "Ägarskapet har överförts!",
+    "recipe.transferFailed": "Kunde inte överföra ägarskap",
     
     // Categories
     "category.Förrätt": "Förrätt",
@@ -198,6 +205,13 @@ export const translations = {
     "recipe.allCreators": "All",
     "recipe.myRecipes": "My Recipes",
     "recipe.groupRecipes": "Group Recipes",
+    "recipe.filterByCreator": "Filter by person",
+    "recipe.allMembers": "All members",
+    "recipe.transferOwnership": "Transfer Ownership",
+    "recipe.transferTo": "Transfer to",
+    "recipe.transferConfirm": "Are you sure? You will lose the ability to edit this recipe.",
+    "recipe.transferSuccess": "Ownership has been transferred!",
+    "recipe.transferFailed": "Failed to transfer ownership",
     
     // Categories
     "category.Förrätt": "Appetizer",

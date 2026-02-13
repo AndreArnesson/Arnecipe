@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, Users, ChefHat, Tag, Pencil, Trash2, Loader2, X, Plus, ImagePlus, Lock, Globe, Star } from "lucide-react";
+import { Clock, Users, ChefHat, Tag, Pencil, Trash2, Loader2, X, Plus, ImagePlus, Lock, Globe, Star, ArrowRightLeft } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { RECIPE_CATEGORIES, RecipeCategory } from "@/i18n/translations";
@@ -49,6 +49,10 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showTransferConfirm, setShowTransferConfirm] = useState(false);
+  const [transferTargetId, setTransferTargetId] = useState<string>("");
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [groupMembers, setGroupMembers] = useState<{ user_id: string; display_name: string }[]>([]);
 
   // Edit state
   const [editTitle, setEditTitle] = useState("");
@@ -68,6 +72,60 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
 
   if (!recipe) return null;
 
+  // Fetch group members for ownership transfer
+  const fetchGroupMembers = async () => {
+    if (!user) return;
+    const { data: memberships } = await supabase
+      .from("group_members")
+      .select("group_id")
+      .eq("user_id", user.id);
+    if (!memberships?.length) return;
+
+    const groupIds = memberships.map(m => m.group_id);
+    const { data: members } = await supabase
+      .from("group_members")
+      .select("user_id")
+      .in("group_id", groupIds)
+      .neq("user_id", user.id);
+    if (!members?.length) return;
+
+    const uniqueUserIds = [...new Set(members.map(m => m.user_id))];
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("user_id, display_name")
+      .in("user_id", uniqueUserIds);
+
+    setGroupMembers(
+      (profiles || [])
+        .filter(p => p.display_name)
+        .map(p => ({ user_id: p.user_id, display_name: p.display_name! }))
+    );
+  };
+
+  const handleTransfer = async () => {
+    if (!transferTargetId) return;
+    setIsTransferring(true);
+    try {
+      const { error } = await supabase
+        .from("recipes")
+        .update({ user_id: transferTargetId })
+        .eq("id", recipe.id);
+      if (error) {
+        toast.error(t("recipe.transferFailed"));
+        return;
+      }
+      toast.success(t("recipe.transferSuccess"));
+      setShowTransferConfirm(false);
+      setIsEditing(false);
+      onOpenChange(false);
+      onRecipeUpdated?.();
+    } catch {
+      toast.error(t("recipe.transferFailed"));
+    } finally {
+      setIsTransferring(false);
+    }
+  };
+
   const isOwner = user?.id === recipe.user_id;
   const totalTime = (recipe.prep_time || 0) + (recipe.cook_time || 0);
 
@@ -85,6 +143,9 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
     setImageFile(null);
     setEditVisibility(recipe.visibility || "group");
     fetchExistingShares(recipe.id);
+    fetchGroupMembers();
+    setShowTransferConfirm(false);
+    setTransferTargetId("");
     setIsEditing(true);
   };
 
@@ -305,9 +366,16 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
             </div>
 
             <div className="flex flex-col sm:flex-row justify-between pt-4 border-t gap-3">
-              <Button variant="destructive" onClick={() => setShowDeleteConfirm(true)} disabled={isDeleting}>
-                <Trash2 className="h-4 w-4 mr-2" />{t("recipe.delete")}
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="destructive" onClick={() => setShowDeleteConfirm(true)} disabled={isDeleting}>
+                  <Trash2 className="h-4 w-4 mr-2" />{t("recipe.delete")}
+                </Button>
+                {groupMembers.length > 0 && (
+                  <Button variant="outline" onClick={() => setShowTransferConfirm(true)}>
+                    <ArrowRightLeft className="h-4 w-4 mr-2" />{t("recipe.transferOwnership")}
+                  </Button>
+                )}
+              </div>
               <div className="flex gap-3">
                 <Button variant="outline" onClick={cancelEditing}>{t("recipe.cancelEdit")}</Button>
                 <Button onClick={handleSave} disabled={isSaving || !editTitle.trim()}>
@@ -316,6 +384,32 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
                 </Button>
               </div>
             </div>
+
+            {showTransferConfirm && (
+              <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 space-y-3">
+                <p className="text-sm font-medium">{t("recipe.transferTo")}</p>
+                <Select value={transferTargetId} onValueChange={setTransferTargetId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("recipe.filterByCreator")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {groupMembers.map((m) => (
+                      <SelectItem key={m.user_id} value={m.user_id}>
+                        {m.display_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">{t("recipe.transferConfirm")}</p>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleTransfer} disabled={!transferTargetId || isTransferring}>
+                    {isTransferring && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    {t("recipe.transferOwnership")}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setShowTransferConfirm(false)}>{t("recipe.cancelEdit")}</Button>
+                </div>
+              </div>
+            )}
 
             {showDeleteConfirm && (
               <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
