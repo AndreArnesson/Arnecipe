@@ -38,6 +38,8 @@ export const translations = {
     "recipe.rating": "Betyg",
     "recipe.ratingPlaceholder": "t.ex. 10/10, muminkex, fantastisk!",
     "recipe.allCreators": "Alla",
+    "recipe.myRecipes": "Mina recept",
+    "recipe.groupRecipes": "Gruppens recept",
     
     // Categories
     "category.Förrätt": "Förrätt",
@@ -190,6 +192,8 @@ export const translations = {
     "recipe.rating": "Rating",
     "recipe.ratingPlaceholder": "e.g. 10/10, amazing, must try!",
     "recipe.allCreators": "All",
+    "recipe.myRecipes": "My Recipes",
+    "recipe.groupRecipes": "Group Recipes",
     
     // Categories
     "category.Förrätt": "Appetizer",

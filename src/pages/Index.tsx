@@ -45,6 +45,7 @@ export default function Index() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedCreator, setSelectedCreator] = useState<string | null>(null);
+  const [selectedSource, setSelectedSource] = useState<string>("all"); // "all" | "mine" | "group"
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -114,7 +115,14 @@ export default function Index() {
     const matchesCategory = selectedCategory === null || recipe.category === selectedCategory;
     const matchesCreator = selectedCreator === null || recipe.user_id === selectedCreator;
     
-    return matchesSearch && matchesCategory && matchesCreator;
+    let matchesSource = true;
+    if (selectedSource === "mine") {
+      matchesSource = recipe.user_id === user?.id;
+    } else if (selectedSource === "group") {
+      matchesSource = recipe.user_id !== user?.id;
+    }
+    
+    return matchesSearch && matchesCategory && matchesCreator && matchesSource;
   });
 
   const handleRecipeClick = (recipe: Recipe) => {
@@ -195,28 +203,31 @@ export default function Index() {
             />
           </div>
 
-          {/* Creator filter tags */}
-          {creators.length > 1 && (
-            <div className="flex flex-wrap justify-center gap-2 max-w-3xl mx-auto">
-              <Badge
-                variant={selectedCreator === null ? "default" : "outline"}
-                className="cursor-pointer"
-                onClick={() => setSelectedCreator(null)}
-              >
-                {t("recipe.allCreators")}
-              </Badge>
-              {creators.map(({ userId, name }) => (
-                <Badge
-                  key={userId}
-                  variant={selectedCreator === userId ? "default" : "outline"}
-                  className="cursor-pointer"
-                  onClick={() => setSelectedCreator(userId)}
-                >
-                  {name}
-                </Badge>
-              ))}
-            </div>
-          )}
+          {/* Source filter */}
+          <div className="flex flex-wrap justify-center gap-2 max-w-3xl mx-auto mb-3">
+            <Badge
+              variant={selectedSource === "all" ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => setSelectedSource("all")}
+            >
+              {t("recipe.allCreators")}
+            </Badge>
+            <Badge
+              variant={selectedSource === "mine" ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => setSelectedSource("mine")}
+            >
+              {t("recipe.myRecipes")}
+            </Badge>
+            <Badge
+              variant={selectedSource === "group" ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => setSelectedSource("group")}
+            >
+              {t("recipe.groupRecipes")}
+            </Badge>
+          </div>
+
         </div>
       </section>
 
