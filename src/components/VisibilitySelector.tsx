@@ -48,6 +48,10 @@ export function VisibilitySelector({
 
       if (groupsData) {
         setGroups(groupsData);
+        // Auto-select all groups when first loaded
+        if (selectedGroupIds.length === 0) {
+          onGroupsChange(groupsData.map((g) => g.id));
+        }
       }
     };
 
