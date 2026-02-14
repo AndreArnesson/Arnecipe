@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ChefHat, LogOut, Plus, Users, Mail, Loader2, ArrowLeft, Trash2, UserMinus, Crown, Check, X } from "lucide-react";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -61,6 +62,8 @@ export default function Groups() {
   const [inviteGroupId, setInviteGroupId] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [isSendingInvite, setIsSendingInvite] = useState(false);
+  const [leaveGroupId, setLeaveGroupId] = useState<string | null>(null);
+  const [newOwnerId, setNewOwnerId] = useState<string>("");
 
   useEffect(() => {
     if (!loading && !user) {
@@ -320,6 +323,26 @@ export default function Groups() {
   const handleLeaveGroup = async (groupId: string) => {
     if (!user) return;
 
+    // Check if user is owner
+    const group = groups.find((g) => g.id === groupId);
+    const isOwner = group?.members.some(
+      (m) => m.user_id === user.id && m.role === "owner"
+    );
+    const otherMembers = group?.members.filter((m) => m.user_id !== user.id) || [];
+
+    if (isOwner && otherMembers.length > 0) {
+      // Owner must transfer ownership first
+      setLeaveGroupId(groupId);
+      setNewOwnerId("");
+      return;
+    }
+
+    // If owner and no other members, just delete the group
+    if (isOwner && otherMembers.length === 0) {
+      await handleDeleteGroup(groupId);
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("group_members")
@@ -336,6 +359,54 @@ export default function Groups() {
       fetchGroups();
     } catch (error) {
       console.error("Error leaving group:", error);
+    }
+  };
+
+  const handleTransferAndLeave = async () => {
+    if (!user || !leaveGroupId || !newOwnerId) return;
+
+    try {
+      // Transfer ownership: update new owner's role
+      const { error: updateError } = await supabase
+        .from("group_members")
+        .update({ role: "owner" })
+        .eq("group_id", leaveGroupId)
+        .eq("user_id", newOwnerId);
+
+      if (updateError) {
+        console.error("Error transferring ownership:", updateError);
+        toast.error(t("groups.failedToRespond"));
+        return;
+      }
+
+      // Update groups table created_by
+      const { error: groupUpdateError } = await supabase
+        .from("groups")
+        .update({ created_by: newOwnerId })
+        .eq("id", leaveGroupId);
+
+      if (groupUpdateError) {
+        console.error("Error updating group owner:", groupUpdateError);
+      }
+
+      // Remove self from group
+      const { error: deleteError } = await supabase
+        .from("group_members")
+        .delete()
+        .eq("group_id", leaveGroupId)
+        .eq("user_id", user.id);
+
+      if (deleteError) {
+        console.error("Error leaving group:", deleteError);
+        return;
+      }
+
+      toast.success(t("groups.ownershipTransferred"));
+      setLeaveGroupId(null);
+      setNewOwnerId("");
+      fetchGroups();
+    } catch (error) {
+      console.error("Error transferring and leaving:", error);
     }
   };
 
@@ -505,15 +576,26 @@ export default function Groups() {
                       </div>
                       <div className="flex gap-2">
                         {isOwner ? (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteGroup(group.id)}
-                            className="gap-1"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                            {t("groups.deleteGroup")}
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleLeaveGroup(group.id)}
+                              className="gap-1"
+                            >
+                              <UserMinus className="h-3 w-3" />
+                              {t("groups.leaveGroup")}
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteGroup(group.id)}
+                              className="gap-1"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              {t("groups.deleteGroup")}
+                            </Button>
+                          </div>
                         ) : (
                           <Button
                             variant="outline"
@@ -614,6 +696,43 @@ export default function Groups() {
             })}
           </div>
         )}
+        {/* Transfer ownership dialog */}
+        <Dialog open={!!leaveGroupId} onOpenChange={(open) => { if (!open) { setLeaveGroupId(null); setNewOwnerId(""); } }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t("groups.transferOwnershipFirst")}</DialogTitle>
+              <DialogDescription>{t("groups.transferOwnershipDescription")}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>{t("groups.selectNewOwner")}</Label>
+                <Select value={newOwnerId} onValueChange={setNewOwnerId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("groups.selectNewOwner")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {leaveGroupId && groups
+                      .find((g) => g.id === leaveGroupId)
+                      ?.members.filter((m) => m.user_id !== user.id)
+                      .map((m) => (
+                        <SelectItem key={m.user_id} value={m.user_id}>
+                          {m.profile?.display_name || t("groups.member")}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => { setLeaveGroupId(null); setNewOwnerId(""); }}>
+                  {t("groups.cancel")}
+                </Button>
+                <Button onClick={handleTransferAndLeave} disabled={!newOwnerId}>
+                  {t("groups.transferAndLeave")}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
