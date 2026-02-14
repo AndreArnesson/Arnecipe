@@ -162,6 +162,41 @@ export type Database = {
           },
         ]
       }
+      recipe_ratings: {
+        Row: {
+          created_at: string
+          id: string
+          rating: number
+          recipe_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          rating: number
+          recipe_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          rating?: number
+          recipe_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_ratings_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipes: {
         Row: {
           category: string | null
@@ -173,7 +208,6 @@ export type Database = {
           ingredients: string[]
           instructions: string[]
           prep_time: number | null
-          rating: string | null
           servings: number | null
           title: string
           updated_at: string
@@ -190,7 +224,6 @@ export type Database = {
           ingredients?: string[]
           instructions?: string[]
           prep_time?: number | null
-          rating?: string | null
           servings?: number | null
           title: string
           updated_at?: string
@@ -207,7 +240,6 @@ export type Database = {
           ingredients?: string[]
           instructions?: string[]
           prep_time?: number | null
-          rating?: string | null
           servings?: number | null
           title?: string
           updated_at?: string
