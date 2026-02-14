@@ -56,6 +56,14 @@ export const translations = {
     "recipe.transferConfirm": "Är du säker? Du förlorar rätten att redigera receptet.",
     "recipe.transferSuccess": "Ägarskapet har överförts!",
     "recipe.transferFailed": "Kunde inte överföra ägarskap",
+    "recipe.keepScreenOn": "Håll skärmen på",
+    "recipe.screenOn": "Skärmen på",
+    "recipe.shareLink": "Dela länk",
+    "recipe.linkCopied": "Länk kopierad!",
+    "recipe.shareCreated": "Delningslänk skapad och kopierad!",
+    "recipe.failedToShare": "Kunde inte skapa delningslänk",
+    "share.notFound": "Receptet hittades inte",
+    "share.notFoundDescription": "Denna delningslänk är ogiltig eller har tagits bort.",
     
     // Categories
     "category.Förrätt": "Förrätt",
@@ -236,6 +244,14 @@ export const translations = {
     "recipe.transferConfirm": "Are you sure? You will lose the ability to edit this recipe.",
     "recipe.transferSuccess": "Ownership has been transferred!",
     "recipe.transferFailed": "Failed to transfer ownership",
+    "recipe.keepScreenOn": "Keep screen on",
+    "recipe.screenOn": "Screen on",
+    "recipe.shareLink": "Share link",
+    "recipe.linkCopied": "Link copied!",
+    "recipe.shareCreated": "Share link created and copied!",
+    "recipe.failedToShare": "Failed to create share link",
+    "share.notFound": "Recipe not found",
+    "share.notFoundDescription": "This share link is invalid or has been removed.",
     
     // Categories
     "category.Förrätt": "Appetizer",

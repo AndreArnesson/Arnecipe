@@ -13,6 +13,7 @@ import { useVoiceRecipe } from "@/hooks/useVoiceRecipe";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { RECIPE_CATEGORIES, RecipeCategory } from "@/i18n/translations";
 import { VisibilitySelector } from "@/components/VisibilitySelector";
+import { SortableList } from "@/components/SortableList";
 
 interface AddRecipeDialogProps {
   onRecipeAdded?: () => void;
@@ -514,25 +515,29 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
 
           <div className="space-y-3">
             <Label>{t("addRecipe.ingredientsLabel")}</Label>
-            {ingredients.map((ingredient, index) => (
-              <div key={index} className="flex gap-2">
-                <Input
-                  placeholder={`${t("addRecipe.ingredientPlaceholder")} ${index + 1}`}
-                  value={ingredient}
-                  onChange={(e) => updateIngredient(index, e.target.value)}
-                />
-                {ingredients.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeIngredient(index)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            ))}
+            <SortableList
+              items={ingredients}
+              onReorder={setIngredients}
+              renderItem={(ingredient, index) => (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder={`${t("addRecipe.ingredientPlaceholder")} ${index + 1}`}
+                    value={ingredient}
+                    onChange={(e) => updateIngredient(index, e.target.value)}
+                  />
+                  {ingredients.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeIngredient(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
+            />
             <Button type="button" variant="outline" size="sm" onClick={addIngredient}>
               <Plus className="h-4 w-4 mr-1" />
               {t("addRecipe.addIngredient")}
@@ -541,30 +546,34 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
 
           <div className="space-y-3">
             <Label>{t("addRecipe.instructionsLabel")}</Label>
-            {instructions.map((instruction, index) => (
-              <div key={index} className="flex gap-2">
-                <div className="flex items-center justify-center w-8 h-10 rounded-lg bg-primary/10 text-primary font-medium shrink-0">
-                  {index + 1}
+            <SortableList
+              items={instructions}
+              onReorder={setInstructions}
+              renderItem={(instruction, index) => (
+                <div className="flex gap-2">
+                  <div className="flex items-center justify-center w-8 h-10 rounded-lg bg-primary/10 text-primary font-medium shrink-0">
+                    {index + 1}
+                  </div>
+                  <Textarea
+                    placeholder={`${t("addRecipe.stepPlaceholder")} ${index + 1}`}
+                    value={instruction}
+                    onChange={(e) => updateInstruction(index, e.target.value)}
+                    rows={2}
+                    className="flex-1"
+                  />
+                  {instructions.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeInstruction(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
-                <Textarea
-                  placeholder={`${t("addRecipe.stepPlaceholder")} ${index + 1}`}
-                  value={instruction}
-                  onChange={(e) => updateInstruction(index, e.target.value)}
-                  rows={2}
-                  className="flex-1"
-                />
-                {instructions.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeInstruction(index)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            ))}
+              )}
+            />
             <Button type="button" variant="outline" size="sm" onClick={addInstruction}>
               <Plus className="h-4 w-4 mr-1" />
               {t("addRecipe.addStep")}
