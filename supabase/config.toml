@@ -1,1 +1,10 @@
 project_id = "bxcxvocaupmwiudcvexo"
+
+[functions.transcribe-audio]
+verify_jwt = false
+
+[functions.refine-recipe]
+verify_jwt = false
+
+[functions.generate-recipe]
+verify_jwt = false
