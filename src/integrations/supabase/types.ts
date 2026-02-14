@@ -197,6 +197,38 @@ export type Database = {
           },
         ]
       }
+      recipe_shares: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          recipe_id: string
+          share_token: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          recipe_id: string
+          share_token?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          recipe_id?: string
+          share_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_shares_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipes: {
         Row: {
           category: string | null

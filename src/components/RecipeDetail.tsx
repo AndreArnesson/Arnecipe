@@ -6,8 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, Users, ChefHat, Tag, Pencil, Trash2, Loader2, X, Plus, ImagePlus, Lock, Globe, Star, ArrowRightLeft } from "lucide-react";
+import { Clock, Users, ChefHat, Tag, Pencil, Trash2, Loader2, X, Plus, ImagePlus, Lock, Globe, Star, ArrowRightLeft, Share2 } from "lucide-react";
 import { StarRating } from "@/components/StarRating";
+import { WakeLockButton } from "@/components/WakeLockButton";
+import { SortableList } from "@/components/SortableList";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { RECIPE_CATEGORIES, RecipeCategory } from "@/i18n/translations";
@@ -135,6 +137,38 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
     setUserRating(value);
     fetchRatings(recipe.id);
     onRecipeUpdated?.();
+  };
+
+  const handleShareRecipe = async () => {
+    if (!recipe || !user) return;
+    try {
+      // Check for existing share
+      const { data: existing } = await supabase
+        .from("recipe_shares")
+        .select("share_token")
+        .eq("recipe_id", recipe.id)
+        .eq("created_by", user.id)
+        .maybeSingle();
+
+      let token = existing?.share_token;
+      if (!token) {
+        const { data: newShare, error } = await supabase
+          .from("recipe_shares")
+          .insert({ recipe_id: recipe.id, created_by: user.id })
+          .select("share_token")
+          .single();
+        if (error) { toast.error(t("recipe.failedToShare")); return; }
+        token = newShare.share_token;
+        toast.success(t("recipe.shareCreated"));
+      } else {
+        toast.success(t("recipe.linkCopied"));
+      }
+
+      const url = `${window.location.origin}/shared/${token}`;
+      await navigator.clipboard.writeText(url);
+    } catch {
+      toast.error(t("recipe.failedToShare"));
+    }
   };
 
   if (!recipe) return null;
@@ -388,16 +422,20 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
 
             <div className="space-y-3">
               <Label>{t("addRecipe.ingredientsLabel")}</Label>
-              {editIngredients.map((ing, i) => (
-                <div key={i} className="flex gap-2">
-                  <Input value={ing} onChange={(e) => { const n = [...editIngredients]; n[i] = e.target.value; setEditIngredients(n); }} />
-                  {editIngredients.length > 1 && (
-                    <Button type="button" variant="ghost" size="icon" onClick={() => setEditIngredients(editIngredients.filter((_, j) => j !== i))}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
+              <SortableList
+                items={editIngredients}
+                onReorder={setEditIngredients}
+                renderItem={(ing, i) => (
+                  <div className="flex gap-2">
+                    <Input value={ing} onChange={(e) => { const n = [...editIngredients]; n[i] = e.target.value; setEditIngredients(n); }} />
+                    {editIngredients.length > 1 && (
+                      <Button type="button" variant="ghost" size="icon" onClick={() => setEditIngredients(editIngredients.filter((_, j) => j !== i))}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+              />
               <Button type="button" variant="outline" size="sm" onClick={() => setEditIngredients([...editIngredients, ""])}>
                 <Plus className="h-4 w-4 mr-1" />{t("addRecipe.addIngredient")}
               </Button>
@@ -405,17 +443,21 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
 
             <div className="space-y-3">
               <Label>{t("addRecipe.instructionsLabel")}</Label>
-              {editInstructions.map((inst, i) => (
-                <div key={i} className="flex gap-2">
-                  <div className="flex items-center justify-center w-8 h-10 rounded-lg bg-primary/10 text-primary font-medium shrink-0">{i + 1}</div>
-                  <Textarea value={inst} onChange={(e) => { const n = [...editInstructions]; n[i] = e.target.value; setEditInstructions(n); }} rows={2} className="flex-1" />
-                  {editInstructions.length > 1 && (
-                    <Button type="button" variant="ghost" size="icon" onClick={() => setEditInstructions(editInstructions.filter((_, j) => j !== i))}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
+              <SortableList
+                items={editInstructions}
+                onReorder={setEditInstructions}
+                renderItem={(inst, i) => (
+                  <div className="flex gap-2">
+                    <div className="flex items-center justify-center w-8 h-10 rounded-lg bg-primary/10 text-primary font-medium shrink-0">{i + 1}</div>
+                    <Textarea value={inst} onChange={(e) => { const n = [...editInstructions]; n[i] = e.target.value; setEditInstructions(n); }} rows={2} className="flex-1" />
+                    {editInstructions.length > 1 && (
+                      <Button type="button" variant="ghost" size="icon" onClick={() => setEditInstructions(editInstructions.filter((_, j) => j !== i))}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+              />
               <Button type="button" variant="outline" size="sm" onClick={() => setEditInstructions([...editInstructions, ""])}>
                 <Plus className="h-4 w-4 mr-1" />{t("addRecipe.addStep")}
               </Button>
@@ -493,11 +535,17 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
             <DialogTitle className="font-display text-2xl">
               {recipe.title}
             </DialogTitle>
-            {isOwner && (
-              <Button variant="ghost" size="icon" onClick={startEditing} title={t("recipe.edit")}>
-                <Pencil className="h-4 w-4" />
+            <div className="flex items-center gap-1">
+              <WakeLockButton />
+              <Button variant="ghost" size="icon" onClick={handleShareRecipe} title={t("recipe.shareLink")}>
+                <Share2 className="h-4 w-4" />
               </Button>
-            )}
+              {isOwner && (
+                <Button variant="ghost" size="icon" onClick={startEditing} title={t("recipe.edit")}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
         </DialogHeader>
 

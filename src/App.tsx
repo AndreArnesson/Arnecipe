@@ -8,6 +8,7 @@ import { LanguageProvider } from "@/i18n/LanguageContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Groups from "./pages/Groups";
+import SharedRecipe from "./pages/SharedRecipe";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/groups" element={<Groups />} />
+              <Route path="/shared/:token" element={<SharedRecipe />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
