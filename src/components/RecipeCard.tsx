@@ -1,7 +1,8 @@
-import { Clock, Users, Star } from "lucide-react";
+import { Clock, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/i18n/LanguageContext";
+import { StarRating } from "@/components/StarRating";
 
 interface RecipeCardProps {
   id: string;
@@ -12,7 +13,9 @@ interface RecipeCardProps {
   servings?: number;
   imageUrl?: string;
   category?: string | null;
-  rating?: string | null;
+  avgRating?: number;
+  ratingCount?: number;
+  userRating?: number;
   creatorName?: string;
   onClick?: () => void;
 }
@@ -25,7 +28,9 @@ export function RecipeCard({
   servings,
   imageUrl,
   category,
-  rating,
+  avgRating,
+  ratingCount,
+  userRating,
   creatorName,
   onClick,
 }: RecipeCardProps) {
@@ -79,11 +84,8 @@ export function RecipeCard({
               <span>{servings} {t("recipe.servings")}</span>
             </div>
           )}
-          {rating && (
-            <div className="flex items-center gap-1">
-              <Star className="h-3.5 w-3.5 fill-primary text-primary" />
-              <span className="text-foreground font-medium">{rating}</span>
-            </div>
+          {(avgRating ?? 0) > 0 && (
+            <StarRating value={avgRating!} readonly size="sm" count={ratingCount} />
           )}
         </div>
         {creatorName && (

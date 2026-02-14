@@ -42,7 +42,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [visibility, setVisibility] = useState("group");
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
-  const [rating, setRating] = useState("");
+  // rating removed - now handled via recipe_ratings table
 
   const resetForm = () => {
     setTitle("");
@@ -59,7 +59,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
     setShowTranscriptPreview(false);
     setVisibility("group");
     setSelectedGroupIds([]);
-    setRating("");
+    // rating reset removed
     clearTranscription();
   };
 
@@ -215,7 +215,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
         category: category || null,
         image_url: imageUrl,
         visibility,
-        rating: rating.trim() || null,
+        // rating no longer stored on recipe
       }).select().single();
 
       if (error) {
@@ -477,15 +477,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
             onGroupsChange={setSelectedGroupIds}
           />
 
-          {/* Rating */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">{t("recipe.rating")}</Label>
-            <Input
-              value={rating}
-              onChange={(e) => setRating(e.target.value)}
-              placeholder={t("recipe.ratingPlaceholder")}
-            />
-          </div>
+          {/* Rating is now set after saving via the recipe detail view */}
 
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">

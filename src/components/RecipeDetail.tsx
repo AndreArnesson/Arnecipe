@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Clock, Users, ChefHat, Tag, Pencil, Trash2, Loader2, X, Plus, ImagePlus, Lock, Globe, Star, ArrowRightLeft } from "lucide-react";
+import { StarRating } from "@/components/StarRating";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { RECIPE_CATEGORIES, RecipeCategory } from "@/i18n/translations";
@@ -27,7 +28,7 @@ interface Recipe {
   image_url?: string;
   category?: string | null;
   visibility?: string;
-  rating?: string | null;
+  // rating removed from recipe - now in recipe_ratings table
   created_at: string;
   user_id: string;
   profiles?: {
@@ -64,11 +65,77 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
   const [editServings, setEditServings] = useState("");
   const [editCategory, setEditCategory] = useState<string>("");
   const [editRating, setEditRating] = useState("");
+  const [userRating, setUserRating] = useState<number>(0);
+  const [avgRating, setAvgRating] = useState<number>(0);
+  const [ratingCount, setRatingCount] = useState<number>(0);
+  const [isLoadingRatings, setIsLoadingRatings] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editVisibility, setEditVisibility] = useState("group");
   const [editGroupIds, setEditGroupIds] = useState<string[]>([]);
+
+  // Fetch ratings for current recipe
+  const fetchRatings = async (recipeId: string) => {
+    if (!user) return;
+    setIsLoadingRatings(true);
+    try {
+      const { data: allRatings } = await supabase
+        .from("recipe_ratings")
+        .select("rating, user_id")
+        .eq("recipe_id", recipeId);
+      
+      if (allRatings && allRatings.length > 0) {
+        const sum = allRatings.reduce((acc, r) => acc + Number(r.rating), 0);
+        setAvgRating(sum / allRatings.length);
+        setRatingCount(allRatings.length);
+        const mine = allRatings.find(r => r.user_id === user.id);
+        setUserRating(mine ? Number(mine.rating) : 0);
+      } else {
+        setAvgRating(0);
+        setRatingCount(0);
+        setUserRating(0);
+      }
+    } finally {
+      setIsLoadingRatings(false);
+    }
+  };
+
+  // Load ratings when recipe changes
+  useEffect(() => {
+    if (recipe && open) {
+      fetchRatings(recipe.id);
+    }
+  }, [recipe?.id, open]);
+
+  const handleUserRating = async (value: number) => {
+    if (!user || !recipe) return;
+    if (value === 0) {
+      // Remove rating
+      await supabase
+        .from("recipe_ratings")
+        .delete()
+        .eq("recipe_id", recipe.id)
+        .eq("user_id", user.id);
+      toast.success(t("recipe.ratingRemoved"));
+    } else {
+      // Upsert rating
+      const { error } = await supabase
+        .from("recipe_ratings")
+        .upsert(
+          { recipe_id: recipe.id, user_id: user.id, rating: value },
+          { onConflict: "recipe_id,user_id" }
+        );
+      if (error) {
+        console.error("Rating error:", error);
+        return;
+      }
+      toast.success(t("recipe.ratingSubmitted"));
+    }
+    setUserRating(value);
+    fetchRatings(recipe.id);
+    onRecipeUpdated?.();
+  };
 
   if (!recipe) return null;
 
@@ -138,7 +205,7 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
     setEditCookTime(recipe.cook_time?.toString() || "");
     setEditServings(recipe.servings?.toString() || "");
     setEditCategory(recipe.category || "");
-    setEditRating(recipe.rating || "");
+    setEditRating("");
     setImagePreview(recipe.image_url || null);
     setImageFile(null);
     setEditVisibility(recipe.visibility || "group");
@@ -198,7 +265,7 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
         cook_time: editCookTime ? parseInt(editCookTime) : null,
         servings: editServings ? parseInt(editServings) : null,
         category: editCategory || null,
-        rating: editRating.trim() || null,
+        // rating no longer on recipe table
         image_url: imageUrl,
         visibility: editVisibility,
       }).eq("id", recipe.id);
@@ -296,18 +363,7 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
               </Select>
             </div>
 
-            {/* Rating */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Star className="h-4 w-4" />
-                {t("recipe.rating")}
-              </Label>
-              <Input
-                value={editRating}
-                onChange={(e) => setEditRating(e.target.value)}
-                placeholder={t("recipe.ratingPlaceholder")}
-              />
-            </div>
+            {/* Rating removed from edit - users rate from view mode */}
 
             <VisibilitySelector
               visibility={editVisibility}
@@ -458,13 +514,23 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
             </p>
           )}
 
-          {recipe.rating && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
-              <Star className="h-4 w-4 text-primary fill-primary" />
-              <span className="font-medium text-foreground">{t("recipe.rating")}:</span>
-              <span className="text-foreground">{recipe.rating}</span>
+          {/* Rating section */}
+          <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground mb-1">{t("recipe.yourRating")}</p>
+                <StarRating value={userRating} onChange={handleUserRating} size="md" />
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-medium text-foreground mb-1">{t("recipe.averageRating")}</p>
+                {ratingCount > 0 ? (
+                  <StarRating value={avgRating} readonly size="md" showValue count={ratingCount} />
+                ) : (
+                  <span className="text-xs text-muted-foreground">{t("recipe.noRatings")}</span>
+                )}
+              </div>
             </div>
-          )}
+          </div>
 
           <div className="flex flex-wrap gap-2 sm:gap-3">
             {totalTime > 0 && (

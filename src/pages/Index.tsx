@@ -29,12 +29,14 @@ interface Recipe {
   image_url?: string;
   category?: string | null;
   visibility?: string;
-  rating?: string | null;
   created_at: string;
   user_id: string;
   profiles?: {
     display_name?: string;
   };
+  avgRating?: number;
+  ratingCount?: number;
+  userRating?: number;
 }
 
 export default function Index() {
@@ -50,6 +52,7 @@ export default function Index() {
   const [selectedSource, setSelectedSource] = useState<string>("all"); // "all" | "mine" | "group"
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<string>("newest"); // "newest" | "avgRating" | "myRating"
 
   useEffect(() => {
     if (!loading && !user) {
@@ -75,17 +78,35 @@ export default function Index() {
 
       // Fetch profiles for all recipe creators
       const userIds = [...new Set((recipesData || []).map(r => r.user_id))];
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("user_id, display_name")
-        .in("user_id", userIds);
+      const recipeIds = (recipesData || []).map(r => r.id);
+      
+      const [{ data: profilesData }, { data: ratingsData }] = await Promise.all([
+        supabase.from("profiles").select("user_id, display_name").in("user_id", userIds),
+        supabase.from("recipe_ratings").select("recipe_id, rating, user_id").in("recipe_id", recipeIds),
+      ]);
       
       const profilesMap = new Map((profilesData || []).map(p => [p.user_id, p]));
       
-      const recipesWithProfiles = (recipesData || []).map(recipe => ({
-        ...recipe,
-        profiles: profilesMap.get(recipe.user_id) as { display_name?: string } | undefined
-      }));
+      // Calculate avg and user ratings per recipe
+      const ratingsByRecipe = new Map<string, { sum: number; count: number; userRating?: number }>();
+      for (const r of (ratingsData || [])) {
+        const entry = ratingsByRecipe.get(r.recipe_id) || { sum: 0, count: 0 };
+        entry.sum += Number(r.rating);
+        entry.count += 1;
+        if (r.user_id === user.id) entry.userRating = Number(r.rating);
+        ratingsByRecipe.set(r.recipe_id, entry);
+      }
+      
+      const recipesWithProfiles = (recipesData || []).map(recipe => {
+        const ratingInfo = ratingsByRecipe.get(recipe.id);
+        return {
+          ...recipe,
+          profiles: profilesMap.get(recipe.user_id) as { display_name?: string } | undefined,
+          avgRating: ratingInfo ? ratingInfo.sum / ratingInfo.count : 0,
+          ratingCount: ratingInfo?.count || 0,
+          userRating: ratingInfo?.userRating || 0,
+        };
+      });
       
       setRecipes(recipesWithProfiles);
     } catch (error) {
@@ -125,6 +146,10 @@ export default function Index() {
     }
     
     return matchesSearch && matchesCategory && matchesCreator && matchesSource;
+  }).sort((a, b) => {
+    if (sortBy === "avgRating") return (b.avgRating || 0) - (a.avgRating || 0);
+    if (sortBy === "myRating") return (b.userRating || 0) - (a.userRating || 0);
+    return 0; // default: already sorted by newest from DB
   });
 
   const handleRecipeClick = (recipe: Recipe) => {
@@ -254,6 +279,20 @@ export default function Index() {
             )}
           </div>
 
+          {/* Sort dropdown */}
+          <div className="flex justify-center mt-2">
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[180px] h-8 bg-background">
+                <SelectValue placeholder={t("recipe.sortLabel")} />
+              </SelectTrigger>
+              <SelectContent className="bg-popover z-50">
+                <SelectItem value="newest">{t("recipe.sortByNewest")}</SelectItem>
+                <SelectItem value="avgRating">{t("recipe.sortByAvgRating")}</SelectItem>
+                <SelectItem value="myRating">{t("recipe.sortByMyRating")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
         </div>
       </section>
 
@@ -295,7 +334,9 @@ export default function Index() {
                   servings={recipe.servings}
                   imageUrl={recipe.image_url}
                   category={recipe.category}
-                  rating={recipe.rating}
+                  avgRating={recipe.avgRating}
+                  ratingCount={recipe.ratingCount}
+                  userRating={recipe.userRating}
                   creatorName={recipe.profiles?.display_name}
                   onClick={() => handleRecipeClick(recipe)}
                 />
