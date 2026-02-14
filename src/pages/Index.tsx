@@ -155,7 +155,7 @@ export default function Index() {
                 <ChefHat className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
               </div>
               <div className="min-w-0">
-                <h1 className="font-display text-base sm:text-xl font-bold text-foreground truncate">
+                <h1 className="sr-only sm:not-sr-only font-display text-base sm:text-xl font-bold text-foreground truncate">
                   {t("app.title")}
                 </h1>
                 <p className="text-xs text-muted-foreground hidden sm:block">{t("app.subtitle")}</p>
