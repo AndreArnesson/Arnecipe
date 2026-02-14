@@ -289,6 +289,7 @@ export type Database = {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
       }
+      recipe_has_share_token: { Args: { _recipe_id: string }; Returns: boolean }
       user_has_recipe_group_access: {
         Args: { _recipe_id: string; _user_id: string }
         Returns: boolean
