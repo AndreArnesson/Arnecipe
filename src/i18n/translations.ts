@@ -64,6 +64,14 @@ export const translations = {
     "recipe.failedToShare": "Kunde inte skapa delningslänk",
     "share.notFound": "Receptet hittades inte",
     "share.notFoundDescription": "Denna delningslänk är ogiltig eller har tagits bort.",
+
+    // Comments
+    "comments.title": "Kommentarer",
+    "comments.noComments": "Inga kommentarer ännu",
+    "comments.placeholder": "Skriv en kommentar...",
+    "comments.failedToAdd": "Kunde inte lägga till kommentar",
+    "comments.failedToDelete": "Kunde inte ta bort kommentar",
+    "comments.failedToUpdate": "Kunde inte uppdatera kommentar",
     
     // Categories
     "category.Förrätt": "Förrätt",
@@ -252,6 +260,14 @@ export const translations = {
     "recipe.failedToShare": "Failed to create share link",
     "share.notFound": "Recipe not found",
     "share.notFoundDescription": "This share link is invalid or has been removed.",
+
+    // Comments
+    "comments.title": "Comments",
+    "comments.noComments": "No comments yet",
+    "comments.placeholder": "Write a comment...",
+    "comments.failedToAdd": "Failed to add comment",
+    "comments.failedToDelete": "Failed to delete comment",
+    "comments.failedToUpdate": "Failed to update comment",
     
     // Categories
     "category.Förrätt": "Appetizer",
