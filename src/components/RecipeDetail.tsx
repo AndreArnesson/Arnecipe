@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { VisibilitySelector } from "@/components/VisibilitySelector";
 import { LinkifyText } from "@/components/LinkifyText";
+import { CommentSection } from "@/components/CommentSection";
 
 interface Recipe {
   id: string;
@@ -655,6 +656,9 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
               </ol>
             </div>
           )}
+
+          {/* Comments */}
+          <CommentSection recipeId={recipe.id} />
         </div>
       </DialogContent>
     </Dialog>
