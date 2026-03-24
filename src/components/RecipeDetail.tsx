@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,8 @@ import { toast } from "sonner";
 import { VisibilitySelector } from "@/components/VisibilitySelector";
 import { LinkifyText } from "@/components/LinkifyText";
 import { CommentSection } from "@/components/CommentSection";
+import { RecipeImageGallery } from "@/components/RecipeImageGallery";
+import { RecipeImageManager, ImageItem } from "@/components/RecipeImageManager";
 
 interface Recipe {
   id: string;
@@ -72,9 +74,9 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
   const [avgRating, setAvgRating] = useState<number>(0);
   const [ratingCount, setRatingCount] = useState<number>(0);
   const [isLoadingRatings, setIsLoadingRatings] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [editImages, setEditImages] = useState<ImageItem[]>([]);
+  const [existingImages, setExistingImages] = useState<{ id: string; image_url: string; caption: string | null; sort_order: number }[]>([]);
+  const [additionalImages, setAdditionalImages] = useState<{ id: string; image_url: string; caption: string | null; sort_order: number }[]>([]);
   const [editVisibility, setEditVisibility] = useState("group");
   const [editGroupIds, setEditGroupIds] = useState<string[]>([]);
 
