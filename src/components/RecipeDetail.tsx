@@ -106,10 +106,20 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
     }
   };
 
-  // Load ratings when recipe changes
+  // Load ratings and additional images when recipe changes
+  const fetchAdditionalImages = useCallback(async (recipeId: string) => {
+    const { data } = await supabase
+      .from("recipe_images")
+      .select("id, image_url, caption, sort_order")
+      .eq("recipe_id", recipeId)
+      .order("sort_order");
+    setAdditionalImages(data || []);
+  }, []);
+
   useEffect(() => {
     if (recipe && open) {
       fetchRatings(recipe.id);
+      fetchAdditionalImages(recipe.id);
     }
   }, [recipe?.id, open]);
 
@@ -243,8 +253,15 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
     setEditServings(recipe.servings?.toString() || "");
     setEditCategory(recipe.category || "");
     setEditRating("");
-    setImagePreview(recipe.image_url || null);
-    setImageFile(null);
+    // Load existing images for editing
+    const existingEditImages: ImageItem[] = [];
+    if (recipe.image_url) {
+      existingEditImages.push({ preview: recipe.image_url, caption: "", image_url: recipe.image_url });
+    }
+    for (const img of additionalImages) {
+      existingEditImages.push({ id: img.id, preview: img.image_url, caption: img.caption || "", image_url: img.image_url });
+    }
+    setEditImages(existingEditImages);
     setEditVisibility(recipe.visibility || "group");
     fetchExistingShares(recipe.id);
     fetchGroupMembers();
@@ -268,28 +285,40 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
     setShowDeleteConfirm(false);
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setImagePreview(reader.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
+  // handleImageSelect removed - using RecipeImageManager now
 
   const handleSave = async () => {
     if (!editTitle.trim()) return;
     setIsSaving(true);
     try {
-      let imageUrl = recipe.image_url;
-      if (imageFile && user) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage.from('recipe-images').upload(fileName, imageFile);
-        if (!uploadError) {
-          const { data: { publicUrl } } = supabase.storage.from('recipe-images').getPublicUrl(fileName);
-          imageUrl = publicUrl;
+      // Delete old additional images
+      await supabase.from("recipe_images").delete().eq("recipe_id", recipe.id);
+
+      // Upload new images
+      let mainImageUrl: string | null = null;
+      for (let i = 0; i < editImages.length; i++) {
+        const img = editImages[i];
+        let imageUrl = img.image_url;
+
+        // Upload new file if present
+        if (img.file && user) {
+          const fileExt = img.file.name.split('.').pop();
+          const fileName = `${user.id}/${Date.now()}_${i}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage.from('recipe-images').upload(fileName, img.file);
+          if (!uploadError) {
+            const { data: { publicUrl } } = supabase.storage.from('recipe-images').getPublicUrl(fileName);
+            imageUrl = publicUrl;
+          }
+        }
+
+        if (imageUrl) {
+          if (i === 0) mainImageUrl = imageUrl;
+          await supabase.from("recipe_images").insert({
+            recipe_id: recipe.id,
+            image_url: imageUrl,
+            caption: img.caption || null,
+            sort_order: i,
+          });
         }
       }
 
@@ -302,8 +331,7 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
         cook_time: editCookTime ? parseInt(editCookTime) : null,
         servings: editServings ? parseInt(editServings) : null,
         category: editCategory || null,
-        // rating no longer on recipe table
-        image_url: imageUrl,
+        image_url: mainImageUrl || (editImages.length === 0 ? null : recipe.image_url),
         visibility: editVisibility,
       }).eq("id", recipe.id);
 
