@@ -391,20 +391,10 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
             <DialogTitle className="font-display text-2xl">{t("recipe.edit")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
-            {imagePreview ? (
-              <div className="relative">
-                <img src={imagePreview} alt="" className="w-full h-48 object-cover rounded-lg border" />
-                <Button type="button" variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()} className="absolute bottom-2 right-2">
-                  {t("addRecipe.changeImage")}
-                </Button>
-              </div>
-            ) : (
-              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full h-24 border-dashed gap-2">
-                <ImagePlus className="h-5 w-5" />
-                {t("addRecipe.uploadImage")}
-              </Button>
-            )}
+            <div className="space-y-2">
+              <Label>{t("addRecipe.imageLabel")}</Label>
+              <RecipeImageManager images={editImages} onChange={setEditImages} />
+            </div>
 
             <div className="space-y-2">
               <Label>{t("addRecipe.recipeTitle")}</Label>
