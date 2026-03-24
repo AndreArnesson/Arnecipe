@@ -66,40 +66,47 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
     clearTranscription();
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const uploadImage = async (userId: string): Promise<string | null> => {
-    if (!imageFile) return null;
+  const uploadImages = async (userId: string, recipeId: string): Promise<string | null> => {
+    if (recipeImages.length === 0) return null;
     
     setIsUploadingImage(true);
+    let mainImageUrl: string | null = null;
+    
     try {
-      const fileExt = imageFile.name.split('.').pop();
-      const fileName = `${userId}/${Date.now()}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('recipe-images')
-        .upload(fileName, imageFile);
+      for (let i = 0; i < recipeImages.length; i++) {
+        const img = recipeImages[i];
+        if (!img.file) continue;
+        
+        const fileExt = img.file.name.split('.').pop();
+        const fileName = `${userId}/${Date.now()}_${i}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('recipe-images')
+          .upload(fileName, img.file);
 
-      if (uploadError) {
-        console.error("Image upload error:", uploadError);
-        return null;
+        if (uploadError) {
+          console.error("Image upload error:", uploadError);
+          continue;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('recipe-images')
+          .getPublicUrl(fileName);
+
+        if (i === 0) {
+          mainImageUrl = publicUrl;
+        }
+
+        // Save to recipe_images table
+        await supabase.from("recipe_images").insert({
+          recipe_id: recipeId,
+          image_url: publicUrl,
+          caption: img.caption || null,
+          sort_order: i,
+        });
       }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('recipe-images')
-        .getPublicUrl(fileName);
-
-      return publicUrl;
+      
+      return mainImageUrl;
     } catch (error) {
       console.error("Image upload error:", error);
       return null;
