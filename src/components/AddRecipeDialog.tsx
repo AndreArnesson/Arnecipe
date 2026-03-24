@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import { RECIPE_CATEGORIES, RecipeCategory } from "@/i18n/translations";
 import { VisibilitySelector } from "@/components/VisibilitySelector";
 import { SortableList } from "@/components/SortableList";
+import { RecipeImageManager, ImageItem } from "@/components/RecipeImageManager";
 
 interface AddRecipeDialogProps {
   onRecipeAdded?: () => void;
@@ -39,10 +40,8 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
   const [cookTime, setCookTime] = useState("");
   const [servings, setServings] = useState("");
   const [category, setCategory] = useState<RecipeCategory | "">("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [recipeImages, setRecipeImages] = useState<ImageItem[]>([]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [visibility, setVisibility] = useState("group");
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   // rating removed - now handled via recipe_ratings table
@@ -56,8 +55,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
     setCookTime("");
     setServings("");
     setCategory("");
-    setImageFile(null);
-    setImagePreview(null);
+    setRecipeImages([]);
     setEditedTranscription("");
     setShowTranscriptPreview(false);
     setAiPromptText("");
