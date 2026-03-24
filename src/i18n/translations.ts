@@ -121,6 +121,10 @@ export const translations = {
     "addRecipe.imageLabel": "Receptbild",
     "addRecipe.uploadImage": "Ladda upp bild",
     "addRecipe.changeImage": "Byt bild",
+    "addRecipe.aiPrompt": "AI-textinmatning",
+    "addRecipe.aiPromptHint": "Klistra in eller skriv ett recept så skapar AI:n ett strukturerat recept åt dig",
+    "addRecipe.aiPromptPlaceholder": "Klistra in eller skriv ett recept här, t.ex. ingredienser, steg, tider...",
+    "addRecipe.parseRecipe": "Skapa recept med AI",
     
     // Auth
     "auth.signOut": "Logga ut",
@@ -317,6 +321,10 @@ export const translations = {
     "addRecipe.imageLabel": "Recipe Image",
     "addRecipe.uploadImage": "Upload Image",
     "addRecipe.changeImage": "Change Image",
+    "addRecipe.aiPrompt": "AI Text Input",
+    "addRecipe.aiPromptHint": "Paste or type a recipe and AI will create a structured recipe for you",
+    "addRecipe.aiPromptPlaceholder": "Paste or type a recipe here, e.g. ingredients, steps, times...",
+    "addRecipe.parseRecipe": "Create recipe with AI",
     
     // Auth
     "auth.signOut": "Sign Out",
