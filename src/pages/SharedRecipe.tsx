@@ -182,12 +182,21 @@ export default function SharedRecipe() {
             <div>
               <h3 className="font-display text-lg font-semibold mb-3">{t("recipe.ingredients")}</h3>
               <ul className="space-y-2">
-                {recipe.ingredients.map((ingredient, index) => (
-                  <li key={index} className="flex items-start gap-3">
-                    <span className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
-                    <LinkifyText text={ingredient} />
-                  </li>
-                ))}
+                {recipe.ingredients.map((ingredient, index) => {
+                  if (ingredient.startsWith("## ")) {
+                    return (
+                      <li key={index} className="pt-3 first:pt-0">
+                        <h4 className="font-display font-semibold text-base text-foreground">{ingredient.slice(3)}</h4>
+                      </li>
+                    );
+                  }
+                  return (
+                    <li key={index} className="flex items-start gap-3">
+                      <span className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
+                      <LinkifyText text={ingredient} />
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
