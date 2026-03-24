@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, Users, ChefHat, Tag, Loader2 } from "lucide-react";
 import { LinkifyText } from "@/components/LinkifyText";
 import { StarRating } from "@/components/StarRating";
+import { RecipeImageGallery } from "@/components/RecipeImageGallery";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { LanguageToggle } from "@/components/LanguageToggle";
 
@@ -30,6 +31,7 @@ export default function SharedRecipe() {
   const [recipe, setRecipe] = useState<SharedRecipeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [additionalImages, setAdditionalImages] = useState<{ id: string; image_url: string; caption: string | null; sort_order: number }[]>([]);
 
   useEffect(() => {
     const fetchSharedRecipe = async () => {
@@ -68,6 +70,14 @@ export default function SharedRecipe() {
 
       const ratingSum = (ratings || []).reduce((s, r) => s + Number(r.rating), 0);
       const ratingCount = (ratings || []).length;
+
+      // Fetch additional images
+      const { data: images } = await supabase
+        .from("recipe_images")
+        .select("id, image_url, caption, sort_order")
+        .eq("recipe_id", recipeData.id)
+        .order("sort_order");
+      setAdditionalImages(images || []);
 
       setRecipe({
         ...recipeData,
@@ -116,11 +126,7 @@ export default function SharedRecipe() {
 
       <main className="container mx-auto px-4 py-8 max-w-2xl">
         <div className="space-y-6">
-          {recipe.image_url && (
-            <div className="aspect-video rounded-xl overflow-hidden">
-              <img src={recipe.image_url} alt={recipe.title} className="w-full h-full object-cover" />
-            </div>
-          )}
+          <RecipeImageGallery mainImage={recipe.image_url} additionalImages={additionalImages} />
 
           <h1 className="font-display text-3xl font-bold">{recipe.title}</h1>
 

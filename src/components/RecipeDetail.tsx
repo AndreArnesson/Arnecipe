@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, Users, ChefHat, Tag, Pencil, Trash2, Loader2, X, Plus, ImagePlus, Lock, Globe, Star, ArrowRightLeft, Share2 } from "lucide-react";
+import { Clock, Users, ChefHat, Tag, Pencil, Trash2, Loader2, X, Plus, Lock, Globe, Star, ArrowRightLeft, Share2 } from "lucide-react";
 import { StarRating } from "@/components/StarRating";
 import { WakeLockButton } from "@/components/WakeLockButton";
 import { SortableList } from "@/components/SortableList";
@@ -18,6 +18,8 @@ import { toast } from "sonner";
 import { VisibilitySelector } from "@/components/VisibilitySelector";
 import { LinkifyText } from "@/components/LinkifyText";
 import { CommentSection } from "@/components/CommentSection";
+import { RecipeImageGallery } from "@/components/RecipeImageGallery";
+import { RecipeImageManager, ImageItem } from "@/components/RecipeImageManager";
 
 interface Recipe {
   id: string;
@@ -72,9 +74,9 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
   const [avgRating, setAvgRating] = useState<number>(0);
   const [ratingCount, setRatingCount] = useState<number>(0);
   const [isLoadingRatings, setIsLoadingRatings] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [editImages, setEditImages] = useState<ImageItem[]>([]);
+  const [existingImages, setExistingImages] = useState<{ id: string; image_url: string; caption: string | null; sort_order: number }[]>([]);
+  const [additionalImages, setAdditionalImages] = useState<{ id: string; image_url: string; caption: string | null; sort_order: number }[]>([]);
   const [editVisibility, setEditVisibility] = useState("group");
   const [editGroupIds, setEditGroupIds] = useState<string[]>([]);
 
@@ -104,10 +106,20 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
     }
   };
 
-  // Load ratings when recipe changes
+  // Load ratings and additional images when recipe changes
+  const fetchAdditionalImages = useCallback(async (recipeId: string) => {
+    const { data } = await supabase
+      .from("recipe_images")
+      .select("id, image_url, caption, sort_order")
+      .eq("recipe_id", recipeId)
+      .order("sort_order");
+    setAdditionalImages(data || []);
+  }, []);
+
   useEffect(() => {
     if (recipe && open) {
       fetchRatings(recipe.id);
+      fetchAdditionalImages(recipe.id);
     }
   }, [recipe?.id, open]);
 
@@ -241,8 +253,15 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
     setEditServings(recipe.servings?.toString() || "");
     setEditCategory(recipe.category || "");
     setEditRating("");
-    setImagePreview(recipe.image_url || null);
-    setImageFile(null);
+    // Load existing images for editing
+    const existingEditImages: ImageItem[] = [];
+    if (recipe.image_url) {
+      existingEditImages.push({ preview: recipe.image_url, caption: "", image_url: recipe.image_url });
+    }
+    for (const img of additionalImages) {
+      existingEditImages.push({ id: img.id, preview: img.image_url, caption: img.caption || "", image_url: img.image_url });
+    }
+    setEditImages(existingEditImages);
     setEditVisibility(recipe.visibility || "group");
     fetchExistingShares(recipe.id);
     fetchGroupMembers();
@@ -266,28 +285,40 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
     setShowDeleteConfirm(false);
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setImagePreview(reader.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
+  // handleImageSelect removed - using RecipeImageManager now
 
   const handleSave = async () => {
     if (!editTitle.trim()) return;
     setIsSaving(true);
     try {
-      let imageUrl = recipe.image_url;
-      if (imageFile && user) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage.from('recipe-images').upload(fileName, imageFile);
-        if (!uploadError) {
-          const { data: { publicUrl } } = supabase.storage.from('recipe-images').getPublicUrl(fileName);
-          imageUrl = publicUrl;
+      // Delete old additional images
+      await supabase.from("recipe_images").delete().eq("recipe_id", recipe.id);
+
+      // Upload new images
+      let mainImageUrl: string | null = null;
+      for (let i = 0; i < editImages.length; i++) {
+        const img = editImages[i];
+        let imageUrl = img.image_url;
+
+        // Upload new file if present
+        if (img.file && user) {
+          const fileExt = img.file.name.split('.').pop();
+          const fileName = `${user.id}/${Date.now()}_${i}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage.from('recipe-images').upload(fileName, img.file);
+          if (!uploadError) {
+            const { data: { publicUrl } } = supabase.storage.from('recipe-images').getPublicUrl(fileName);
+            imageUrl = publicUrl;
+          }
+        }
+
+        if (imageUrl) {
+          if (i === 0) mainImageUrl = imageUrl;
+          await supabase.from("recipe_images").insert({
+            recipe_id: recipe.id,
+            image_url: imageUrl,
+            caption: img.caption || null,
+            sort_order: i,
+          });
         }
       }
 
@@ -300,8 +331,7 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
         cook_time: editCookTime ? parseInt(editCookTime) : null,
         servings: editServings ? parseInt(editServings) : null,
         category: editCategory || null,
-        // rating no longer on recipe table
-        image_url: imageUrl,
+        image_url: mainImageUrl || (editImages.length === 0 ? null : recipe.image_url),
         visibility: editVisibility,
       }).eq("id", recipe.id);
 
@@ -361,20 +391,10 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
             <DialogTitle className="font-display text-2xl">{t("recipe.edit")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
-            {imagePreview ? (
-              <div className="relative">
-                <img src={imagePreview} alt="" className="w-full h-48 object-cover rounded-lg border" />
-                <Button type="button" variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()} className="absolute bottom-2 right-2">
-                  {t("addRecipe.changeImage")}
-                </Button>
-              </div>
-            ) : (
-              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full h-24 border-dashed gap-2">
-                <ImagePlus className="h-5 w-5" />
-                {t("addRecipe.uploadImage")}
-              </Button>
-            )}
+            <div className="space-y-2">
+              <Label>{t("addRecipe.imageLabel")}</Label>
+              <RecipeImageManager images={editImages} onChange={setEditImages} />
+            </div>
 
             <div className="space-y-2">
               <Label>{t("addRecipe.recipeTitle")}</Label>
@@ -568,11 +588,7 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {recipe.image_url && (
-            <div className="aspect-video rounded-xl overflow-hidden">
-              <img src={recipe.image_url} alt={recipe.title} className="w-full h-full object-cover" />
-            </div>
-          )}
+          <RecipeImageGallery mainImage={recipe.image_url} additionalImages={additionalImages} />
 
           {recipe.description && (
             <p className="text-muted-foreground">

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import { RECIPE_CATEGORIES, RecipeCategory } from "@/i18n/translations";
 import { VisibilitySelector } from "@/components/VisibilitySelector";
 import { SortableList } from "@/components/SortableList";
+import { RecipeImageManager, ImageItem } from "@/components/RecipeImageManager";
 
 interface AddRecipeDialogProps {
   onRecipeAdded?: () => void;
@@ -39,10 +40,8 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
   const [cookTime, setCookTime] = useState("");
   const [servings, setServings] = useState("");
   const [category, setCategory] = useState<RecipeCategory | "">("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [recipeImages, setRecipeImages] = useState<ImageItem[]>([]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [visibility, setVisibility] = useState("group");
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   // rating removed - now handled via recipe_ratings table
@@ -56,8 +55,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
     setCookTime("");
     setServings("");
     setCategory("");
-    setImageFile(null);
-    setImagePreview(null);
+    setRecipeImages([]);
     setEditedTranscription("");
     setShowTranscriptPreview(false);
     setAiPromptText("");
@@ -68,40 +66,47 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
     clearTranscription();
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const uploadImage = async (userId: string): Promise<string | null> => {
-    if (!imageFile) return null;
+  const uploadImages = async (userId: string, recipeId: string): Promise<string | null> => {
+    if (recipeImages.length === 0) return null;
     
     setIsUploadingImage(true);
+    let mainImageUrl: string | null = null;
+    
     try {
-      const fileExt = imageFile.name.split('.').pop();
-      const fileName = `${userId}/${Date.now()}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('recipe-images')
-        .upload(fileName, imageFile);
+      for (let i = 0; i < recipeImages.length; i++) {
+        const img = recipeImages[i];
+        if (!img.file) continue;
+        
+        const fileExt = img.file.name.split('.').pop();
+        const fileName = `${userId}/${Date.now()}_${i}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('recipe-images')
+          .upload(fileName, img.file);
 
-      if (uploadError) {
-        console.error("Image upload error:", uploadError);
-        return null;
+        if (uploadError) {
+          console.error("Image upload error:", uploadError);
+          continue;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('recipe-images')
+          .getPublicUrl(fileName);
+
+        if (i === 0) {
+          mainImageUrl = publicUrl;
+        }
+
+        // Save to recipe_images table
+        await supabase.from("recipe_images").insert({
+          recipe_id: recipeId,
+          image_url: publicUrl,
+          caption: img.caption || null,
+          sort_order: i,
+        });
       }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('recipe-images')
-        .getPublicUrl(fileName);
-
-      return publicUrl;
+      
+      return mainImageUrl;
     } catch (error) {
       console.error("Image upload error:", error);
       return null;
@@ -224,8 +229,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
 
     setIsSaving(true);
     try {
-      const imageUrl = await uploadImage(user.id);
-      
+      // First create recipe without image
       const { data: recipeData, error } = await supabase.from("recipes").insert({
         user_id: user.id,
         title: title.trim(),
@@ -236,15 +240,22 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
         cook_time: cookTime ? parseInt(cookTime) : null,
         servings: servings ? parseInt(servings) : null,
         category: category || null,
-        image_url: imageUrl,
+        image_url: null,
         visibility,
-        // rating no longer stored on recipe
       }).select().single();
 
       if (error) {
         console.error("Save error:", error);
         toast.error(t("message.failedToSave"));
         return;
+      }
+
+      // Upload images and set main image
+      if (recipeData && recipeImages.length > 0) {
+        const mainImageUrl = await uploadImages(user.id, recipeData.id);
+        if (mainImageUrl) {
+          await supabase.from("recipes").update({ image_url: mainImageUrl }).eq("id", recipeData.id);
+        }
       }
 
       // If visibility is 'group', create group shares
@@ -473,41 +484,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
           {/* Image Upload */}
           <div className="space-y-2">
             <Label>{t("addRecipe.imageLabel")}</Label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleImageSelect}
-              className="hidden"
-            />
-            {imagePreview ? (
-              <div className="relative">
-                <img
-                  src={imagePreview}
-                  alt="Recipe preview"
-                  className="w-full h-48 object-cover rounded-lg border"
-                />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-2 right-2"
-                >
-                  {t("addRecipe.changeImage")}
-                </Button>
-              </div>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full h-32 border-dashed gap-2"
-              >
-                <ImagePlus className="h-5 w-5" />
-                {t("addRecipe.uploadImage")}
-              </Button>
-            )}
+            <RecipeImageManager images={recipeImages} onChange={setRecipeImages} />
           </div>
 
           <div className="space-y-2">
