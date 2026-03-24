@@ -193,6 +193,24 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
     clearTranscription();
   };
 
+  const handleAiPromptParse = async () => {
+    if (!aiPromptText.trim()) return;
+    const recipe = await refineTranscription(aiPromptText);
+    if (recipe) {
+      if (recipe.title) setTitle(recipe.title);
+      if (recipe.description) setDescription(recipe.description);
+      if (recipe.ingredients?.length) setIngredients(recipe.ingredients);
+      if (recipe.instructions?.length) setInstructions(recipe.instructions);
+      if (recipe.prepTime) setPrepTime(recipe.prepTime.toString());
+      if (recipe.cookTime) setCookTime(recipe.cookTime.toString());
+      if (recipe.servings) setServings(recipe.servings.toString());
+      if (recipe.category) {
+        setCategory(recipe.category as RecipeCategory);
+      }
+      setAiPromptText("");
+    }
+  };
+
   const handleSave = async () => {
     if (!title.trim()) {
       toast.error(t("message.enterTitle"));
