@@ -229,8 +229,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
 
     setIsSaving(true);
     try {
-      const imageUrl = await uploadImage(user.id);
-      
+      // First create recipe without image
       const { data: recipeData, error } = await supabase.from("recipes").insert({
         user_id: user.id,
         title: title.trim(),
@@ -241,15 +240,22 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
         cook_time: cookTime ? parseInt(cookTime) : null,
         servings: servings ? parseInt(servings) : null,
         category: category || null,
-        image_url: imageUrl,
+        image_url: null,
         visibility,
-        // rating no longer stored on recipe
       }).select().single();
 
       if (error) {
         console.error("Save error:", error);
         toast.error(t("message.failedToSave"));
         return;
+      }
+
+      // Upload images and set main image
+      if (recipeData && recipeImages.length > 0) {
+        const mainImageUrl = await uploadImages(user.id, recipeData.id);
+        if (mainImageUrl) {
+          await supabase.from("recipes").update({ image_url: mainImageUrl }).eq("id", recipeData.id);
+        }
       }
 
       // If visibility is 'group', create group shares
@@ -478,41 +484,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
           {/* Image Upload */}
           <div className="space-y-2">
             <Label>{t("addRecipe.imageLabel")}</Label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleImageSelect}
-              className="hidden"
-            />
-            {imagePreview ? (
-              <div className="relative">
-                <img
-                  src={imagePreview}
-                  alt="Recipe preview"
-                  className="w-full h-48 object-cover rounded-lg border"
-                />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-2 right-2"
-                >
-                  {t("addRecipe.changeImage")}
-                </Button>
-              </div>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full h-32 border-dashed gap-2"
-              >
-                <ImagePlus className="h-5 w-5" />
-                {t("addRecipe.uploadImage")}
-              </Button>
-            )}
+            <RecipeImageManager images={recipeImages} onChange={setRecipeImages} />
           </div>
 
           <div className="space-y-2">
