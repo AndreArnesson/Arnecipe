@@ -426,20 +426,37 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
               <SortableList
                 items={editIngredients}
                 onReorder={setEditIngredients}
-                renderItem={(ing, i) => (
-                  <div className="flex gap-2">
-                    <Input value={ing} onChange={(e) => { const n = [...editIngredients]; n[i] = e.target.value; setEditIngredients(n); }} />
-                    {editIngredients.length > 1 && (
-                      <Button type="button" variant="ghost" size="icon" onClick={() => setEditIngredients(editIngredients.filter((_, j) => j !== i))}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                )}
+                renderItem={(ing, i) => {
+                  const isSection = ing.startsWith("## ");
+                  return (
+                    <div className="flex gap-2">
+                      {isSection ? (
+                        <Input
+                          value={ing.slice(3)}
+                          onChange={(e) => { const n = [...editIngredients]; n[i] = `## ${e.target.value}`; setEditIngredients(n); }}
+                          className="font-semibold bg-secondary/50"
+                          placeholder={t("addRecipe.sectionPlaceholder")}
+                        />
+                      ) : (
+                        <Input value={ing} onChange={(e) => { const n = [...editIngredients]; n[i] = e.target.value; setEditIngredients(n); }} />
+                      )}
+                      {editIngredients.length > 1 && (
+                        <Button type="button" variant="ghost" size="icon" onClick={() => setEditIngredients(editIngredients.filter((_, j) => j !== i))}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  );
+                }}
               />
-              <Button type="button" variant="outline" size="sm" onClick={() => setEditIngredients([...editIngredients, ""])}>
-                <Plus className="h-4 w-4 mr-1" />{t("addRecipe.addIngredient")}
-              </Button>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setEditIngredients([...editIngredients, ""])}>
+                  <Plus className="h-4 w-4 mr-1" />{t("addRecipe.addIngredient")}
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setEditIngredients([...editIngredients, "## "])}>
+                  <Plus className="h-4 w-4 mr-1" />{t("addRecipe.addSection")}
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -629,12 +646,21 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
             <div>
               <h3 className="font-display text-lg font-semibold mb-3">{t("recipe.ingredients")}</h3>
               <ul className="space-y-2">
-                {recipe.ingredients.map((ingredient, index) => (
-                  <li key={index} className="flex items-start gap-3">
-                    <span className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
-                    <LinkifyText text={ingredient} />
-                  </li>
-                ))}
+                {recipe.ingredients.map((ingredient, index) => {
+                  if (ingredient.startsWith("## ")) {
+                    return (
+                      <li key={index} className="pt-3 first:pt-0">
+                        <h4 className="font-display font-semibold text-base text-foreground">{ingredient.slice(3)}</h4>
+                      </li>
+                    );
+                  }
+                  return (
+                    <li key={index} className="flex items-start gap-3">
+                      <span className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
+                      <LinkifyText text={ingredient} />
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}

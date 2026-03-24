@@ -39,7 +39,7 @@ serve(async (req) => {
 Return a JSON object with:
 - title: A clear, appetizing recipe title (inferred from the content)
 - description: A brief, appetizing description (1-2 sentences)
-- ingredients: Array of ingredient strings with quantities (e.g., "2 cups flour", "1 tsp salt"). Clean up any informal measurements.
+- ingredients: Array of ingredient strings with quantities (e.g., "2 cups flour", "1 tsp salt"). If the recipe has distinct sections (e.g. sauce, dough, filling, topping), prefix each section header with "## " (e.g. "## Sauce", "## Dough") followed by the ingredients for that section. Only add section headers if there are clearly distinct components.
 - instructions: Array of step-by-step instructions. Make them clear and easy to follow.
 - prepTime: Estimated preparation time in minutes (number)
 - cookTime: Estimated cooking time in minutes (number)
