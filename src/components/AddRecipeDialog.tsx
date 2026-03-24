@@ -596,30 +596,48 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
             <SortableList
               items={ingredients}
               onReorder={setIngredients}
-              renderItem={(ingredient, index) => (
-                <div className="flex gap-2">
-                  <Input
-                    placeholder={`${t("addRecipe.ingredientPlaceholder")} ${index + 1}`}
-                    value={ingredient}
-                    onChange={(e) => updateIngredient(index, e.target.value)}
-                  />
-                  {ingredients.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeIngredient(index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              )}
+              renderItem={(ingredient, index) => {
+                const isSection = ingredient.startsWith("## ");
+                return (
+                  <div className="flex gap-2">
+                    {isSection ? (
+                      <Input
+                        placeholder={t("addRecipe.sectionPlaceholder")}
+                        value={ingredient.slice(3)}
+                        onChange={(e) => updateIngredient(index, `## ${e.target.value}`)}
+                        className="font-semibold bg-secondary/50"
+                      />
+                    ) : (
+                      <Input
+                        placeholder={`${t("addRecipe.ingredientPlaceholder")} ${index + 1}`}
+                        value={ingredient}
+                        onChange={(e) => updateIngredient(index, e.target.value)}
+                      />
+                    )}
+                    {ingredients.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeIngredient(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                );
+              }}
             />
-            <Button type="button" variant="outline" size="sm" onClick={addIngredient}>
-              <Plus className="h-4 w-4 mr-1" />
-              {t("addRecipe.addIngredient")}
-            </Button>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={addIngredient}>
+                <Plus className="h-4 w-4 mr-1" />
+                {t("addRecipe.addIngredient")}
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setIngredients([...ingredients, "## "])}>
+                <Plus className="h-4 w-4 mr-1" />
+                {t("addRecipe.addSection")}
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-3">
