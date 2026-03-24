@@ -349,58 +349,114 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
             </div>
           )}
 
-          {/* Voice Input Section */}
+          {/* AI Input Mode Tabs */}
           {!showTranscriptPreview && (
-            <div className="p-4 rounded-lg bg-secondary/50 border border-border">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h3 className="font-medium text-foreground">{t("addRecipe.voiceInput")}</h3>
-                  <p className="text-xs text-muted-foreground">
-                    {isRecording 
-                      ? t("addRecipe.listening")
-                      : isTranscribing
-                      ? t("addRecipe.transcribing") || "Transcribing..."
-                      : t("addRecipe.dictateHint")}
-                  </p>
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={aiInputMode === "voice" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setAiInputMode("voice")}
+                  className="gap-2"
+                >
+                  <Mic className="h-4 w-4" />
+                  {t("addRecipe.voiceInput")}
+                </Button>
+                <Button
+                  type="button"
+                  variant={aiInputMode === "text" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setAiInputMode("text")}
+                  className="gap-2"
+                >
+                  <MessageSquareText className="h-4 w-4" />
+                  {t("addRecipe.aiPrompt")}
+                </Button>
+              </div>
+
+              {aiInputMode === "voice" ? (
+                <div className="p-4 rounded-lg bg-secondary/50 border border-border">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h3 className="font-medium text-foreground">{t("addRecipe.voiceInput")}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {isRecording 
+                          ? t("addRecipe.listening")
+                          : isTranscribing
+                          ? t("addRecipe.transcribing") || "Transcribing..."
+                          : t("addRecipe.dictateHint")}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant={isRecording ? "destructive" : "outline"}
+                        size="lg"
+                        onClick={handleVoiceToggle}
+                        disabled={isTranscribing || isGenerating || isSaving}
+                        className="gap-2"
+                      >
+                        {isTranscribing ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : isRecording ? (
+                          <MicOff className="h-5 w-5" />
+                        ) : (
+                          <Mic className="h-5 w-5" />
+                        )}
+                        {isTranscribing ? (t("addRecipe.transcribing") || "Transcribing...") : isRecording ? t("addRecipe.stop") : t("addRecipe.record")}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {isRecording && (
+                    <>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="relative flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
+                        </span>
+                        <span className="text-sm text-destructive font-medium">{t("addRecipe.listening")}</span>
+                      </div>
+                      <div className="p-3 rounded bg-background border text-sm min-h-[60px]">
+                        <span className="text-muted-foreground italic">{t("addRecipe.startSpeaking")}</span>
+                      </div>
+                    </>
+                  )}
+
+                  {voiceError && (
+                    <p className="text-xs text-destructive mt-2">{voiceError}</p>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
+              ) : (
+                <div className="p-4 rounded-lg bg-secondary/50 border border-border">
+                  <div className="mb-3">
+                    <h3 className="font-medium text-foreground">{t("addRecipe.aiPrompt")}</h3>
+                    <p className="text-xs text-muted-foreground">
+                      {t("addRecipe.aiPromptHint")}
+                    </p>
+                  </div>
+                  <Textarea
+                    value={aiPromptText}
+                    onChange={(e) => setAiPromptText(e.target.value)}
+                    placeholder={t("addRecipe.aiPromptPlaceholder")}
+                    rows={5}
+                    className="mb-3"
+                  />
                   <Button
                     type="button"
-                    variant={isRecording ? "destructive" : "outline"}
-                    size="lg"
-                    onClick={handleVoiceToggle}
-                    disabled={isTranscribing || isGenerating || isSaving}
+                    onClick={handleAiPromptParse}
+                    disabled={isRefining || !aiPromptText.trim()}
                     className="gap-2"
                   >
-                    {isTranscribing ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : isRecording ? (
-                      <MicOff className="h-5 w-5" />
+                    {isRefining ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Mic className="h-5 w-5" />
+                      <Sparkles className="h-4 w-4" />
                     )}
-                    {isTranscribing ? (t("addRecipe.transcribing") || "Transcribing...") : isRecording ? t("addRecipe.stop") : t("addRecipe.record")}
+                    {t("addRecipe.parseRecipe")}
                   </Button>
                 </div>
-              </div>
-              
-              {isRecording && (
-                <>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="relative flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
-                    </span>
-                    <span className="text-sm text-destructive font-medium">{t("addRecipe.listening")}</span>
-                  </div>
-                  <div className="p-3 rounded bg-background border text-sm min-h-[60px]">
-                    <span className="text-muted-foreground italic">{t("addRecipe.startSpeaking")}</span>
-                  </div>
-                </>
-              )}
-
-              {voiceError && (
-                <p className="text-xs text-destructive mt-2">{voiceError}</p>
               )}
             </div>
           )}
