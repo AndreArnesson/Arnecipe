@@ -588,11 +588,7 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {recipe.image_url && (
-            <div className="aspect-video rounded-xl overflow-hidden">
-              <img src={recipe.image_url} alt={recipe.title} className="w-full h-full object-cover" />
-            </div>
-          )}
+          <RecipeImageGallery mainImage={recipe.image_url} additionalImages={additionalImages} />
 
           {recipe.description && (
             <p className="text-muted-foreground">
