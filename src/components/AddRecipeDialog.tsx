@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Sparkles, Loader2, X, Mic, MicOff, Check, Edit3, ImagePlus, MessageSquareText } from "lucide-react";
+import { Plus, Sparkles, Loader2, X, Mic, MicOff, Check, Edit3, ImagePlus, MessageSquareText, Camera } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -29,8 +29,10 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
   const { isRecording, isTranscribing, isRefining, transcript, startRecording, stopRecording, refineTranscription, clearTranscription, error: voiceError } = useVoiceRecipe();
   const [editedTranscription, setEditedTranscription] = useState("");
   const [showTranscriptPreview, setShowTranscriptPreview] = useState(false);
-  const [aiInputMode, setAiInputMode] = useState<"voice" | "text">("voice");
+  const [aiInputMode, setAiInputMode] = useState<"voice" | "text" | "photo">("voice");
   const [aiPromptText, setAiPromptText] = useState("");
+  const [isParsingImage, setIsParsingImage] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -60,6 +62,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
     setShowTranscriptPreview(false);
     setAiPromptText("");
     setAiInputMode("voice");
+    setPhotoPreview(null);
     setVisibility("group");
     setSelectedGroupIds([]);
     // rating reset removed
