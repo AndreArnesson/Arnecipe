@@ -501,7 +501,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
                     <p className="text-xs text-destructive mt-2">{voiceError}</p>
                   )}
                 </div>
-              ) : (
+              ) : aiInputMode === "text" ? (
                 <div className="p-4 rounded-lg bg-secondary/50 border border-border">
                   <div className="mb-3">
                     <h3 className="font-medium text-foreground">{t("addRecipe.aiPrompt")}</h3>
@@ -529,6 +529,51 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
                     )}
                     {t("addRecipe.parseRecipe")}
                   </Button>
+                </div>
+              ) : (
+                <div className="p-4 rounded-lg bg-secondary/50 border border-border">
+                  <div className="mb-3">
+                    <h3 className="font-medium text-foreground">{t("addRecipe.photoInput")}</h3>
+                    <p className="text-xs text-muted-foreground">
+                      {t("addRecipe.photoHint")}
+                    </p>
+                  </div>
+
+                  {photoPreview && (
+                    <div className="relative mb-3 rounded-lg overflow-hidden">
+                      <img src={photoPreview} alt="Recipe" className="w-full max-h-48 object-cover rounded-lg" />
+                      {isParsingImage && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+                          <div className="flex items-center gap-2 text-white">
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <span className="text-sm font-medium">{t("addRecipe.parsingImage")}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {!isParsingImage && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={`w-full border-dashed gap-2 ${!photoPreview ? "h-32" : "h-10"}`}
+                      onClick={() => {
+                        const input = document.createElement("input");
+                        input.type = "file";
+                        input.accept = "image/*";
+                        input.capture = "environment";
+                        input.onchange = (e) => {
+                          const file = (e.target as HTMLInputElement).files?.[0];
+                          if (file) handlePhotoParse(file);
+                        };
+                        input.click();
+                      }}
+                    >
+                      <Camera className="h-5 w-5" />
+                      {t("addRecipe.takePhoto")}
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
