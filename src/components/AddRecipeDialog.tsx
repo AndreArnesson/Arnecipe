@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Sparkles, Loader2, X, Mic, MicOff, Check, Edit3, ImagePlus, MessageSquareText } from "lucide-react";
+import { Plus, Sparkles, Loader2, X, Mic, MicOff, Check, Edit3, ImagePlus, MessageSquareText, Camera } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -29,8 +29,10 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
   const { isRecording, isTranscribing, isRefining, transcript, startRecording, stopRecording, refineTranscription, clearTranscription, error: voiceError } = useVoiceRecipe();
   const [editedTranscription, setEditedTranscription] = useState("");
   const [showTranscriptPreview, setShowTranscriptPreview] = useState(false);
-  const [aiInputMode, setAiInputMode] = useState<"voice" | "text">("voice");
+  const [aiInputMode, setAiInputMode] = useState<"voice" | "text" | "photo">("voice");
   const [aiPromptText, setAiPromptText] = useState("");
+  const [isParsingImage, setIsParsingImage] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -60,6 +62,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
     setShowTranscriptPreview(false);
     setAiPromptText("");
     setAiInputMode("voice");
+    setPhotoPreview(null);
     setVisibility("group");
     setSelectedGroupIds([]);
     // rating reset removed
@@ -213,6 +216,55 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
         setCategory(recipe.category as RecipeCategory);
       }
       setAiPromptText("");
+    }
+  };
+
+  const handlePhotoParse = async (file: File) => {
+    setIsParsingImage(true);
+    setPhotoPreview(URL.createObjectURL(file));
+    try {
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(",")[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const { data, error } = await supabase.functions.invoke("parse-recipe-image", {
+        body: { imageBase64: base64, mimeType: file.type || "image/jpeg" },
+      });
+
+      if (error) {
+        console.error("Image parse error:", error);
+        if (error.message?.includes("429")) {
+          toast.error(t("message.aiBusy"));
+        } else if (error.message?.includes("402")) {
+          toast.error(t("message.aiCreditsExhausted"));
+        } else {
+          toast.error(t("addRecipe.imageParseError"));
+        }
+        return;
+      }
+
+      if (data) {
+        if (data.title) setTitle(data.title);
+        if (data.description) setDescription(data.description);
+        if (data.ingredients?.length) setIngredients(data.ingredients);
+        if (data.instructions?.length) setInstructions(data.instructions);
+        if (data.prepTime) setPrepTime(data.prepTime.toString());
+        if (data.cookTime) setCookTime(data.cookTime.toString());
+        if (data.servings) setServings(data.servings.toString());
+        if (data.category) setCategory(data.category as RecipeCategory);
+        toast.success(t("addRecipe.imageParsed"));
+      }
+    } catch (error) {
+      console.error("Image parse error:", error);
+      toast.error(t("addRecipe.imageParseError"));
+    } finally {
+      setIsParsingImage(false);
     }
   };
 
@@ -384,6 +436,16 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
                   <MessageSquareText className="h-4 w-4" />
                   {t("addRecipe.aiPrompt")}
                 </Button>
+                <Button
+                  type="button"
+                  variant={aiInputMode === "photo" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setAiInputMode("photo")}
+                  className="gap-2"
+                >
+                  <Camera className="h-4 w-4" />
+                  {t("addRecipe.photoInput")}
+                </Button>
               </div>
 
               {aiInputMode === "voice" ? (
@@ -439,7 +501,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
                     <p className="text-xs text-destructive mt-2">{voiceError}</p>
                   )}
                 </div>
-              ) : (
+              ) : aiInputMode === "text" ? (
                 <div className="p-4 rounded-lg bg-secondary/50 border border-border">
                   <div className="mb-3">
                     <h3 className="font-medium text-foreground">{t("addRecipe.aiPrompt")}</h3>
@@ -467,6 +529,51 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
                     )}
                     {t("addRecipe.parseRecipe")}
                   </Button>
+                </div>
+              ) : (
+                <div className="p-4 rounded-lg bg-secondary/50 border border-border">
+                  <div className="mb-3">
+                    <h3 className="font-medium text-foreground">{t("addRecipe.photoInput")}</h3>
+                    <p className="text-xs text-muted-foreground">
+                      {t("addRecipe.photoHint")}
+                    </p>
+                  </div>
+
+                  {photoPreview && (
+                    <div className="relative mb-3 rounded-lg overflow-hidden">
+                      <img src={photoPreview} alt="Recipe" className="w-full max-h-48 object-cover rounded-lg" />
+                      {isParsingImage && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+                          <div className="flex items-center gap-2 text-white">
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <span className="text-sm font-medium">{t("addRecipe.parsingImage")}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {!isParsingImage && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={`w-full border-dashed gap-2 ${!photoPreview ? "h-32" : "h-10"}`}
+                      onClick={() => {
+                        const input = document.createElement("input");
+                        input.type = "file";
+                        input.accept = "image/*";
+                        input.capture = "environment";
+                        input.onchange = (e) => {
+                          const file = (e.target as HTMLInputElement).files?.[0];
+                          if (file) handlePhotoParse(file);
+                        };
+                        input.click();
+                      }}
+                    >
+                      <Camera className="h-5 w-5" />
+                      {t("addRecipe.takePhoto")}
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
