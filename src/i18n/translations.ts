@@ -129,6 +129,12 @@ export const translations = {
     "addRecipe.aiPromptHint": "Klistra in eller skriv ett recept så skapar AI:n ett strukturerat recept åt dig",
     "addRecipe.aiPromptPlaceholder": "Klistra in eller skriv ett recept här, t.ex. ingredienser, steg, tider...",
     "addRecipe.parseRecipe": "Skapa recept med AI",
+    "addRecipe.photoInput": "Foto",
+    "addRecipe.photoHint": "Ta ett foto eller ladda upp en bild av ett recept från en bok eller anteckningar",
+    "addRecipe.takePhoto": "Ta foto / Välj bild",
+    "addRecipe.parsingImage": "Tolkar recept från bild...",
+    "addRecipe.imageParsed": "Recept tolkat från bild!",
+    "addRecipe.imageParseError": "Kunde inte tolka recept från bilden",
     
     // Auth
     "auth.signOut": "Logga ut",
@@ -333,6 +339,12 @@ export const translations = {
     "addRecipe.aiPromptHint": "Paste or type a recipe and AI will create a structured recipe for you",
     "addRecipe.aiPromptPlaceholder": "Paste or type a recipe here, e.g. ingredients, steps, times...",
     "addRecipe.parseRecipe": "Create recipe with AI",
+    "addRecipe.photoInput": "Photo",
+    "addRecipe.photoHint": "Take a photo or upload an image of a recipe from a book or notes",
+    "addRecipe.takePhoto": "Take photo / Choose image",
+    "addRecipe.parsingImage": "Parsing recipe from image...",
+    "addRecipe.imageParsed": "Recipe parsed from image!",
+    "addRecipe.imageParseError": "Could not parse recipe from image",
     
     // Auth
     "auth.signOut": "Sign Out",
