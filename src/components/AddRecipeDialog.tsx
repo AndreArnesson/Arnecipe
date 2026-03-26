@@ -219,6 +219,55 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
     }
   };
 
+  const handlePhotoParse = async (file: File) => {
+    setIsParsingImage(true);
+    setPhotoPreview(URL.createObjectURL(file));
+    try {
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(",")[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const { data, error } = await supabase.functions.invoke("parse-recipe-image", {
+        body: { imageBase64: base64, mimeType: file.type || "image/jpeg" },
+      });
+
+      if (error) {
+        console.error("Image parse error:", error);
+        if (error.message?.includes("429")) {
+          toast.error(t("message.aiBusy"));
+        } else if (error.message?.includes("402")) {
+          toast.error(t("message.aiCreditsExhausted"));
+        } else {
+          toast.error(t("addRecipe.imageParseError"));
+        }
+        return;
+      }
+
+      if (data) {
+        if (data.title) setTitle(data.title);
+        if (data.description) setDescription(data.description);
+        if (data.ingredients?.length) setIngredients(data.ingredients);
+        if (data.instructions?.length) setInstructions(data.instructions);
+        if (data.prepTime) setPrepTime(data.prepTime.toString());
+        if (data.cookTime) setCookTime(data.cookTime.toString());
+        if (data.servings) setServings(data.servings.toString());
+        if (data.category) setCategory(data.category as RecipeCategory);
+        toast.success(t("addRecipe.imageParsed"));
+      }
+    } catch (error) {
+      console.error("Image parse error:", error);
+      toast.error(t("addRecipe.imageParseError"));
+    } finally {
+      setIsParsingImage(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!title.trim()) {
       toast.error(t("message.enterTitle"));
