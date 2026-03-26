@@ -436,6 +436,16 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
                   <MessageSquareText className="h-4 w-4" />
                   {t("addRecipe.aiPrompt")}
                 </Button>
+                <Button
+                  type="button"
+                  variant={aiInputMode === "photo" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setAiInputMode("photo")}
+                  className="gap-2"
+                >
+                  <Camera className="h-4 w-4" />
+                  {t("addRecipe.photoInput")}
+                </Button>
               </div>
 
               {aiInputMode === "voice" ? (
