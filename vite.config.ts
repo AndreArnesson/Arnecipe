@@ -23,8 +23,8 @@ export default defineConfig(({ mode }) => ({
       },
       includeAssets: ["icon-192x192.png", "icon-512x512.png"],
       manifest: {
-        name: "Arnesson Receptbok",
-        short_name: "Receptbok",
+        name: "Arnesson Recept",
+        short_name: "Recept",
         start_url: "/",
         display: "standalone",
         theme_color: "#c05a2c",
