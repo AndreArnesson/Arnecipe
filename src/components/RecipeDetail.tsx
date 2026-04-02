@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, Users, ChefHat, Tag, Pencil, Trash2, Loader2, X, Plus, Lock, Globe, Star, ArrowRightLeft, Share2 } from "lucide-react";
+import { Clock, Users, ChefHat, Tag, Pencil, Trash2, Loader2, X, Plus, Lock, Globe, Star, ArrowRightLeft, Share2, Play, Square } from "lucide-react";
 import { StarRating } from "@/components/StarRating";
 import { WakeLockButton } from "@/components/WakeLockButton";
 import { SortableList } from "@/components/SortableList";
