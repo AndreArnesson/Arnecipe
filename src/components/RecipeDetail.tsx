@@ -82,6 +82,42 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
   const [editVisibility, setEditVisibility] = useState("group");
   const [editGroupIds, setEditGroupIds] = useState<string[]>([]);
 
+  // Cooking mode state
+  const [isCooking, setIsCooking] = useState(false);
+  const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
+  const [checkedSteps, setCheckedSteps] = useState<Set<number>>(new Set());
+
+  const toggleIngredient = (index: number) => {
+    setCheckedIngredients(prev => {
+      const next = new Set(prev);
+      next.has(index) ? next.delete(index) : next.add(index);
+      return next;
+    });
+  };
+
+  const toggleStep = (index: number) => {
+    setCheckedSteps(prev => {
+      const next = new Set(prev);
+      next.has(index) ? next.delete(index) : next.add(index);
+      return next;
+    });
+  };
+
+  const startCooking = () => {
+    setCheckedIngredients(new Set());
+    setCheckedSteps(new Set());
+    setIsCooking(true);
+  };
+
+  const stopCooking = () => {
+    setIsCooking(false);
+  };
+
+  // Calculate cooking progress
+  const cookingTotalItems = recipe ? (recipe.ingredients.filter(i => !i.startsWith("## ")).length + recipe.instructions.length) : 0;
+  const cookingCheckedItems = checkedIngredients.size + checkedSteps.size;
+  const cookingProgress = cookingTotalItems > 0 ? Math.round((cookingCheckedItems / cookingTotalItems) * 100) : 0;
+
   // Fetch ratings for current recipe
   const fetchRatings = async (recipeId: string) => {
     if (!user) return;
