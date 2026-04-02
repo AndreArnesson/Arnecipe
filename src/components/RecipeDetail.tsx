@@ -637,6 +637,20 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
         </DialogHeader>
 
         <div className="space-y-6 py-4">
+          {/* Cooking progress bar */}
+          {isCooking && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium text-foreground">{t("recipe.cookingProgress")}</span>
+                <span className="text-muted-foreground">{cookingProgress}%</span>
+              </div>
+              <Progress value={cookingProgress} className="h-2" />
+              {cookingProgress === 100 && (
+                <p className="text-center text-sm font-medium text-primary animate-in fade-in">{t("recipe.cookingDone")}</p>
+              )}
+            </div>
+          )}
+
           <RecipeImageGallery mainImage={recipe.image_url} additionalImages={additionalImages} />
 
           {recipe.description && (
@@ -720,9 +734,15 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
                     );
                   }
                   return (
-                    <li key={index} className="flex items-start gap-3">
-                      <span className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
-                      <LinkifyText text={ingredient} />
+                    <li key={index} className={`flex items-start gap-3 ${isCooking ? 'cursor-pointer' : ''}`} onClick={isCooking ? () => toggleIngredient(index) : undefined}>
+                      {isCooking ? (
+                        <Checkbox checked={checkedIngredients.has(index)} onCheckedChange={() => toggleIngredient(index)} className="mt-1" />
+                      ) : (
+                        <span className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
+                      )}
+                      <span className={checkedIngredients.has(index) && isCooking ? 'line-through text-muted-foreground' : ''}>
+                        <LinkifyText text={ingredient} />
+                      </span>
                     </li>
                   );
                 })}
@@ -735,11 +755,17 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
               <h3 className="font-display text-lg font-semibold mb-3">{t("recipe.instructions")}</h3>
               <ol className="space-y-4">
                 {recipe.instructions.map((instruction, index) => (
-                  <li key={index} className="flex gap-4">
-                    <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold shrink-0">
-                      {index + 1}
-                    </span>
-                    <p className="pt-1">
+                  <li key={index} className={`flex gap-4 ${isCooking ? 'cursor-pointer' : ''}`} onClick={isCooking ? () => toggleStep(index) : undefined}>
+                    {isCooking ? (
+                      <div className="flex items-center justify-center w-8 h-8 shrink-0">
+                        <Checkbox checked={checkedSteps.has(index)} onCheckedChange={() => toggleStep(index)} className="h-6 w-6" />
+                      </div>
+                    ) : (
+                      <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold shrink-0">
+                        {index + 1}
+                      </span>
+                    )}
+                    <p className={`pt-1 ${checkedSteps.has(index) && isCooking ? 'line-through text-muted-foreground' : ''}`}>
                       <LinkifyText text={instruction} />
                     </p>
                   </li>
