@@ -20,6 +20,8 @@ import { LinkifyText } from "@/components/LinkifyText";
 import { CommentSection } from "@/components/CommentSection";
 import { RecipeImageGallery } from "@/components/RecipeImageGallery";
 import { RecipeImageManager, ImageItem } from "@/components/RecipeImageManager";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 
 interface Recipe {
   id: string;
