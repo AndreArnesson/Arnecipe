@@ -62,6 +62,10 @@ export const translations = {
     "recipe.linkCopied": "Länk kopierad!",
     "recipe.shareCreated": "Delningslänk skapad och kopierad!",
     "recipe.failedToShare": "Kunde inte skapa delningslänk",
+    "recipe.startCooking": "Börja laga",
+    "recipe.stopCooking": "Avsluta",
+    "recipe.cookingProgress": "Framsteg",
+    "recipe.cookingDone": "Alla steg klara! 🎉",
     "share.notFound": "Receptet hittades inte",
     "share.notFoundDescription": "Denna delningslänk är ogiltig eller har tagits bort.",
 
@@ -272,6 +276,10 @@ export const translations = {
     "recipe.linkCopied": "Link copied!",
     "recipe.shareCreated": "Share link created and copied!",
     "recipe.failedToShare": "Failed to create share link",
+    "recipe.startCooking": "Start Cooking",
+    "recipe.stopCooking": "Stop",
+    "recipe.cookingProgress": "Progress",
+    "recipe.cookingDone": "All steps done! 🎉",
     "share.notFound": "Recipe not found",
     "share.notFoundDescription": "This share link is invalid or has been removed.",
 

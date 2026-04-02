@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, Users, ChefHat, Tag, Pencil, Trash2, Loader2, X, Plus, Lock, Globe, Star, ArrowRightLeft, Share2 } from "lucide-react";
+import { Clock, Users, ChefHat, Tag, Pencil, Trash2, Loader2, X, Plus, Lock, Globe, Star, ArrowRightLeft, Share2, Play, Square } from "lucide-react";
 import { StarRating } from "@/components/StarRating";
 import { WakeLockButton } from "@/components/WakeLockButton";
 import { SortableList } from "@/components/SortableList";
@@ -20,6 +20,8 @@ import { LinkifyText } from "@/components/LinkifyText";
 import { CommentSection } from "@/components/CommentSection";
 import { RecipeImageGallery } from "@/components/RecipeImageGallery";
 import { RecipeImageManager, ImageItem } from "@/components/RecipeImageManager";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 
 interface Recipe {
   id: string;
@@ -79,6 +81,42 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
   const [additionalImages, setAdditionalImages] = useState<{ id: string; image_url: string; caption: string | null; sort_order: number }[]>([]);
   const [editVisibility, setEditVisibility] = useState("group");
   const [editGroupIds, setEditGroupIds] = useState<string[]>([]);
+
+  // Cooking mode state
+  const [isCooking, setIsCooking] = useState(false);
+  const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
+  const [checkedSteps, setCheckedSteps] = useState<Set<number>>(new Set());
+
+  const toggleIngredient = (index: number) => {
+    setCheckedIngredients(prev => {
+      const next = new Set(prev);
+      next.has(index) ? next.delete(index) : next.add(index);
+      return next;
+    });
+  };
+
+  const toggleStep = (index: number) => {
+    setCheckedSteps(prev => {
+      const next = new Set(prev);
+      next.has(index) ? next.delete(index) : next.add(index);
+      return next;
+    });
+  };
+
+  const startCooking = () => {
+    setCheckedIngredients(new Set());
+    setCheckedSteps(new Set());
+    setIsCooking(true);
+  };
+
+  const stopCooking = () => {
+    setIsCooking(false);
+  };
+
+  // Calculate cooking progress
+  const cookingTotalItems = recipe ? (recipe.ingredients.filter(i => !i.startsWith("## ")).length + recipe.instructions.length) : 0;
+  const cookingCheckedItems = checkedIngredients.size + checkedSteps.size;
+  const cookingProgress = cookingTotalItems > 0 ? Math.round((cookingCheckedItems / cookingTotalItems) * 100) : 0;
 
   // Fetch ratings for current recipe
   const fetchRatings = async (recipeId: string) => {
@@ -569,12 +607,23 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-start justify-between pr-8">
+            <div className="flex items-start justify-between pr-8">
             <DialogTitle className="font-display text-2xl">
               {recipe.title}
             </DialogTitle>
             <div className="flex items-center gap-1">
               <WakeLockButton />
+              {isCooking ? (
+                <Button variant="outline" size="sm" onClick={stopCooking} className="gap-1.5 text-destructive border-destructive/30">
+                  <Square className="h-3.5 w-3.5" />
+                  {t("recipe.stopCooking")}
+                </Button>
+              ) : (
+                <Button variant="default" size="sm" onClick={startCooking} className="gap-1.5">
+                  <Play className="h-3.5 w-3.5" />
+                  {t("recipe.startCooking")}
+                </Button>
+              )}
               <Button variant="ghost" size="icon" onClick={handleShareRecipe} title={t("recipe.shareLink")}>
                 <Share2 className="h-4 w-4" />
               </Button>
@@ -588,6 +637,20 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
         </DialogHeader>
 
         <div className="space-y-6 py-4">
+          {/* Cooking progress bar */}
+          {isCooking && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium text-foreground">{t("recipe.cookingProgress")}</span>
+                <span className="text-muted-foreground">{cookingProgress}%</span>
+              </div>
+              <Progress value={cookingProgress} className="h-2" />
+              {cookingProgress === 100 && (
+                <p className="text-center text-sm font-medium text-primary animate-in fade-in">{t("recipe.cookingDone")}</p>
+              )}
+            </div>
+          )}
+
           <RecipeImageGallery mainImage={recipe.image_url} additionalImages={additionalImages} />
 
           {recipe.description && (
@@ -671,9 +734,15 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
                     );
                   }
                   return (
-                    <li key={index} className="flex items-start gap-3">
-                      <span className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
-                      <LinkifyText text={ingredient} />
+                    <li key={index} className={`flex items-start gap-3 ${isCooking ? 'cursor-pointer' : ''}`} onClick={isCooking ? () => toggleIngredient(index) : undefined}>
+                      {isCooking ? (
+                        <Checkbox checked={checkedIngredients.has(index)} onCheckedChange={() => toggleIngredient(index)} className="mt-1" />
+                      ) : (
+                        <span className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
+                      )}
+                      <span className={checkedIngredients.has(index) && isCooking ? 'line-through text-muted-foreground' : ''}>
+                        <LinkifyText text={ingredient} />
+                      </span>
                     </li>
                   );
                 })}
@@ -686,11 +755,17 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
               <h3 className="font-display text-lg font-semibold mb-3">{t("recipe.instructions")}</h3>
               <ol className="space-y-4">
                 {recipe.instructions.map((instruction, index) => (
-                  <li key={index} className="flex gap-4">
-                    <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold shrink-0">
-                      {index + 1}
-                    </span>
-                    <p className="pt-1">
+                  <li key={index} className={`flex gap-4 ${isCooking ? 'cursor-pointer' : ''}`} onClick={isCooking ? () => toggleStep(index) : undefined}>
+                    {isCooking ? (
+                      <div className="flex items-center justify-center w-8 h-8 shrink-0">
+                        <Checkbox checked={checkedSteps.has(index)} onCheckedChange={() => toggleStep(index)} className="h-6 w-6" />
+                      </div>
+                    ) : (
+                      <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold shrink-0">
+                        {index + 1}
+                      </span>
+                    )}
+                    <p className={`pt-1 ${checkedSteps.has(index) && isCooking ? 'line-through text-muted-foreground' : ''}`}>
                       <LinkifyText text={instruction} />
                     </p>
                   </li>
