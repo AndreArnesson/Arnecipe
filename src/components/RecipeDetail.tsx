@@ -424,9 +424,9 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
   if (isEditing) {
     return (
       <Dialog open={open} onOpenChange={(o) => { if (!o) cancelEditing(); onOpenChange(o); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
-            <DialogTitle className="font-display text-2xl">{t("recipe.edit")}</DialogTitle>
+            <DialogTitle className="font-display text-xl sm:text-2xl">{t("recipe.edit")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -464,7 +464,7 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
               selectedGroupIds={editGroupIds}
               onGroupsChange={setEditGroupIds}
             />
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>{t("addRecipe.prepTimeLabel")}</Label>
                 <Input type="number" value={editPrepTime} onChange={(e) => setEditPrepTime(e.target.value)} />
@@ -605,30 +605,32 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
-            <div className="flex items-start justify-between pr-8">
-            <DialogTitle className="font-display text-2xl">
+            <div className="flex flex-col gap-2 pr-8">
+            <DialogTitle className="font-display text-xl sm:text-2xl break-words">
               {recipe.title}
             </DialogTitle>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
               <WakeLockButton />
               {isCooking ? (
                 <Button variant="outline" size="sm" onClick={stopCooking} className="gap-1.5 text-destructive border-destructive/30">
                   <Square className="h-3.5 w-3.5" />
-                  {t("recipe.stopCooking")}
+                  <span className="hidden sm:inline">{t("recipe.stopCooking")}</span>
+                  <span className="sm:hidden">Stop</span>
                 </Button>
               ) : (
                 <Button variant="default" size="sm" onClick={startCooking} className="gap-1.5">
                   <Play className="h-3.5 w-3.5" />
-                  {t("recipe.startCooking")}
+                  <span className="hidden sm:inline">{t("recipe.startCooking")}</span>
+                  <span className="sm:hidden">▶</span>
                 </Button>
               )}
-              <Button variant="ghost" size="icon" onClick={handleShareRecipe} title={t("recipe.shareLink")}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleShareRecipe} title={t("recipe.shareLink")}>
                 <Share2 className="h-4 w-4" />
               </Button>
               {isOwner && (
-                <Button variant="ghost" size="icon" onClick={startEditing} title={t("recipe.edit")}>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={startEditing} title={t("recipe.edit")}>
                   <Pencil className="h-4 w-4" />
                 </Button>
               )}
@@ -661,12 +663,12 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
 
           {/* Rating section */}
           <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-foreground mb-1">{t("recipe.yourRating")}</p>
                 <StarRating value={userRating} onChange={handleUserRating} size="md" />
               </div>
-              <div className="text-right">
+              <div className="sm:text-right">
                 <p className="text-sm font-medium text-foreground mb-1">{t("recipe.averageRating")}</p>
                 {ratingCount > 0 ? (
                   <StarRating value={avgRating} readonly size="md" showValue count={ratingCount} />
