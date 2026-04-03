@@ -605,30 +605,32 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
-            <div className="flex items-start justify-between pr-8">
-            <DialogTitle className="font-display text-2xl">
+            <div className="flex flex-col gap-2 pr-8">
+            <DialogTitle className="font-display text-xl sm:text-2xl break-words">
               {recipe.title}
             </DialogTitle>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
               <WakeLockButton />
               {isCooking ? (
                 <Button variant="outline" size="sm" onClick={stopCooking} className="gap-1.5 text-destructive border-destructive/30">
                   <Square className="h-3.5 w-3.5" />
-                  {t("recipe.stopCooking")}
+                  <span className="hidden sm:inline">{t("recipe.stopCooking")}</span>
+                  <span className="sm:hidden">Stop</span>
                 </Button>
               ) : (
                 <Button variant="default" size="sm" onClick={startCooking} className="gap-1.5">
                   <Play className="h-3.5 w-3.5" />
-                  {t("recipe.startCooking")}
+                  <span className="hidden sm:inline">{t("recipe.startCooking")}</span>
+                  <span className="sm:hidden">▶</span>
                 </Button>
               )}
-              <Button variant="ghost" size="icon" onClick={handleShareRecipe} title={t("recipe.shareLink")}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleShareRecipe} title={t("recipe.shareLink")}>
                 <Share2 className="h-4 w-4" />
               </Button>
               {isOwner && (
-                <Button variant="ghost" size="icon" onClick={startEditing} title={t("recipe.edit")}>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={startEditing} title={t("recipe.edit")}>
                   <Pencil className="h-4 w-4" />
                 </Button>
               )}
