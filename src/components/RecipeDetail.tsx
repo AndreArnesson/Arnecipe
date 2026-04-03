@@ -424,9 +424,9 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
   if (isEditing) {
     return (
       <Dialog open={open} onOpenChange={(o) => { if (!o) cancelEditing(); onOpenChange(o); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
-            <DialogTitle className="font-display text-2xl">{t("recipe.edit")}</DialogTitle>
+            <DialogTitle className="font-display text-xl sm:text-2xl">{t("recipe.edit")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
