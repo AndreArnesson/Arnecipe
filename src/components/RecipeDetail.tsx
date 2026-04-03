@@ -663,12 +663,12 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
 
           {/* Rating section */}
           <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-foreground mb-1">{t("recipe.yourRating")}</p>
                 <StarRating value={userRating} onChange={handleUserRating} size="md" />
               </div>
-              <div className="text-right">
+              <div className="sm:text-right">
                 <p className="text-sm font-medium text-foreground mb-1">{t("recipe.averageRating")}</p>
                 {ratingCount > 0 ? (
                   <StarRating value={avgRating} readonly size="md" showValue count={ratingCount} />

@@ -207,7 +207,7 @@ export default function Index() {
       </div>
 
       {/* Hero Section */}
-      <section className="gradient-hero py-6 sm:py-12 px-4">
+      <section className="gradient-hero py-6 sm:py-12 px-4 overflow-hidden">
         <div className="container mx-auto text-center">
           <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-3 sm:mb-4">
             {t("hero.title")} <span className="text-gradient">{t("hero.titleHighlight")}</span>
