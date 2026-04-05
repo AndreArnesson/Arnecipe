@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, Users, ChefHat, Tag, Pencil, Trash2, Loader2, X, Plus, Lock, Globe, Star, ArrowRightLeft, Share2, Play, Square } from "lucide-react";
+import { Clock, Users, ChefHat, Tag, Pencil, Trash2, Loader2, X, Plus, Lock, Globe, Star, ArrowRightLeft, Share2, Play, Square, Minimize2, Maximize2 } from "lucide-react";
 import { StarRating } from "@/components/StarRating";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { WakeLockButton } from "@/components/WakeLockButton";
 import { SortableList } from "@/components/SortableList";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -84,6 +85,8 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
 
   // Cooking mode state
   const [isCooking, setIsCooking] = useState(false);
+  const [isCompact, setIsCompact] = useState(false);
+  const [ingredientsOpen, setIngredientsOpen] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [checkedSteps, setCheckedSteps] = useState<Set<number>>(new Set());
 
@@ -614,11 +617,23 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
             <div className="flex items-center gap-1 flex-wrap">
               <WakeLockButton />
               {isCooking ? (
-                <Button variant="outline" size="sm" onClick={stopCooking} className="gap-1.5 text-destructive border-destructive/30">
-                  <Square className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">{t("recipe.stopCooking")}</span>
-                  <span className="sm:hidden">Stop</span>
-                </Button>
+                <>
+                  <Button variant="outline" size="sm" onClick={stopCooking} className="gap-1.5 text-destructive border-destructive/30">
+                    <Square className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{t("recipe.stopCooking")}</span>
+                    <span className="sm:hidden">Stop</span>
+                  </Button>
+                  <Button
+                    variant={isCompact ? "secondary" : "outline"}
+                    size="sm"
+                    onClick={() => setIsCompact(!isCompact)}
+                    className="gap-1.5"
+                    title={isCompact ? t("recipe.fullMode") : t("recipe.compactMode")}
+                  >
+                    {isCompact ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
+                    <span className="hidden sm:inline">{isCompact ? t("recipe.fullMode") : t("recipe.compactMode")}</span>
+                  </Button>
+                </>
               ) : (
                 <Button variant="default" size="sm" onClick={startCooking} className="gap-1.5">
                   <Play className="h-3.5 w-3.5" />
@@ -653,77 +668,116 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
             </div>
           )}
 
-          <RecipeImageGallery mainImage={recipe.image_url} additionalImages={additionalImages} />
+          {/* Non-compact: show full details */}
+          {!(isCooking && isCompact) && (
+            <>
+              <RecipeImageGallery mainImage={recipe.image_url} additionalImages={additionalImages} />
 
-          {recipe.description && (
-            <p className="text-muted-foreground">
-              <LinkifyText text={recipe.description} />
-            </p>
-          )}
+              {recipe.description && (
+                <p className="text-muted-foreground">
+                  <LinkifyText text={recipe.description} />
+                </p>
+              )}
 
-          {/* Rating section */}
-          <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-foreground mb-1">{t("recipe.yourRating")}</p>
-                <StarRating value={userRating} onChange={handleUserRating} size="md" />
+              {/* Rating section */}
+              <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground mb-1">{t("recipe.yourRating")}</p>
+                    <StarRating value={userRating} onChange={handleUserRating} size="md" />
+                  </div>
+                  <div className="sm:text-right">
+                    <p className="text-sm font-medium text-foreground mb-1">{t("recipe.averageRating")}</p>
+                    {ratingCount > 0 ? (
+                      <StarRating value={avgRating} readonly size="md" showValue count={ratingCount} />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">{t("recipe.noRatings")}</span>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className="sm:text-right">
-                <p className="text-sm font-medium text-foreground mb-1">{t("recipe.averageRating")}</p>
-                {ratingCount > 0 ? (
-                  <StarRating value={avgRating} readonly size="md" showValue count={ratingCount} />
-                ) : (
-                  <span className="text-xs text-muted-foreground">{t("recipe.noRatings")}</span>
+
+              <div className="flex flex-wrap gap-2 sm:gap-3">
+                {totalTime > 0 && (
+                  <Badge variant="secondary" className="gap-1.5 py-1.5 px-3">
+                    <Clock className="h-3.5 w-3.5" />
+                    {totalTime} {t("recipe.totalTime")}
+                  </Badge>
+                )}
+                {recipe.servings && (
+                  <Badge variant="secondary" className="gap-1.5 py-1.5 px-3">
+                    <Users className="h-3.5 w-3.5" />
+                    {recipe.servings} {t("recipe.servings")}
+                  </Badge>
+                )}
+                {recipe.category && (
+                  <Badge variant="secondary" className="gap-1.5 py-1.5 px-3">
+                    <Tag className="h-3.5 w-3.5" />
+                    {language === "en" ? t(`category.${recipe.category}` as any) : recipe.category}
+                  </Badge>
+                )}
+                {recipe.profiles?.display_name && (
+                  <Badge variant="outline" className="gap-1.5 py-1.5 px-3">
+                    <ChefHat className="h-3.5 w-3.5" />
+                    {recipe.profiles.display_name}
+                  </Badge>
                 )}
               </div>
-            </div>
-          </div>
 
-          <div className="flex flex-wrap gap-2 sm:gap-3">
-            {totalTime > 0 && (
-              <Badge variant="secondary" className="gap-1.5 py-1.5 px-3">
-                <Clock className="h-3.5 w-3.5" />
-                {totalTime} {t("recipe.totalTime")}
-              </Badge>
-            )}
-            {recipe.servings && (
-              <Badge variant="secondary" className="gap-1.5 py-1.5 px-3">
-                <Users className="h-3.5 w-3.5" />
-                {recipe.servings} {t("recipe.servings")}
-              </Badge>
-            )}
-            {recipe.category && (
-              <Badge variant="secondary" className="gap-1.5 py-1.5 px-3">
-                <Tag className="h-3.5 w-3.5" />
-                {language === "en" ? t(`category.${recipe.category}` as any) : recipe.category}
-              </Badge>
-            )}
-            {recipe.profiles?.display_name && (
-              <Badge variant="outline" className="gap-1.5 py-1.5 px-3">
-                <ChefHat className="h-3.5 w-3.5" />
-                {recipe.profiles.display_name}
-              </Badge>
-            )}
-          </div>
-
-          {recipe.prep_time || recipe.cook_time ? (
-            <div className="grid grid-cols-2 gap-4">
-              {recipe.prep_time && (
-                <div className="bg-secondary/50 rounded-lg p-4">
-                  <p className="text-sm text-muted-foreground">{t("recipe.prepTime")}</p>
-                  <p className="font-display text-xl font-semibold">{recipe.prep_time} {t("recipe.minutes")}</p>
+              {recipe.prep_time || recipe.cook_time ? (
+                <div className="grid grid-cols-2 gap-4">
+                  {recipe.prep_time && (
+                    <div className="bg-secondary/50 rounded-lg p-4">
+                      <p className="text-sm text-muted-foreground">{t("recipe.prepTime")}</p>
+                      <p className="font-display text-xl font-semibold">{recipe.prep_time} {t("recipe.minutes")}</p>
+                    </div>
+                  )}
+                  {recipe.cook_time && (
+                    <div className="bg-secondary/50 rounded-lg p-4">
+                      <p className="text-sm text-muted-foreground">{t("recipe.cookTime")}</p>
+                      <p className="font-display text-xl font-semibold">{recipe.cook_time} {t("recipe.minutes")}</p>
+                    </div>
+                  )}
                 </div>
-              )}
-              {recipe.cook_time && (
-                <div className="bg-secondary/50 rounded-lg p-4">
-                  <p className="text-sm text-muted-foreground">{t("recipe.cookTime")}</p>
-                  <p className="font-display text-xl font-semibold">{recipe.cook_time} {t("recipe.minutes")}</p>
-                </div>
-              )}
-            </div>
-          ) : null}
+              ) : null}
+            </>
+          )}
 
-          {recipe.ingredients.length > 0 && (
+          {/* Compact mode: collapsible ingredient panel */}
+          {isCooking && isCompact && recipe.ingredients.length > 0 && (
+            <Collapsible open={ingredientsOpen} onOpenChange={setIngredientsOpen}>
+              <CollapsibleTrigger asChild>
+                <button className="w-full flex items-center justify-between p-3 rounded-lg bg-secondary/60 border border-border hover:bg-secondary/80 transition-colors">
+                  <span className="font-display font-semibold text-sm">{t("recipe.ingredients")} ({recipe.ingredients.filter(i => !i.startsWith("## ")).length})</span>
+                  <span className="text-xs text-muted-foreground">{ingredientsOpen ? "▲" : "▼"}</span>
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-2">
+                <ul className="space-y-1.5 pl-1">
+                  {recipe.ingredients.map((ingredient, index) => {
+                    if (ingredient.startsWith("## ")) {
+                      return (
+                        <li key={index} className="pt-2 first:pt-0">
+                          <h4 className="font-display font-semibold text-sm text-foreground">{ingredient.slice(3)}</h4>
+                        </li>
+                      );
+                    }
+                    return (
+                      <li key={index} className="flex items-start gap-2 cursor-pointer text-sm" onClick={() => toggleIngredient(index)}>
+                        <Checkbox checked={checkedIngredients.has(index)} onCheckedChange={() => toggleIngredient(index)} className="mt-0.5 h-4 w-4" />
+                        <span className={checkedIngredients.has(index) ? 'line-through text-muted-foreground' : ''}>
+                          {ingredient}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+
+          {/* Full mode: normal ingredient list */}
+          {!(isCooking && isCompact) && recipe.ingredients.length > 0 && (
             <div>
               <h3 className="font-display text-lg font-semibold mb-3">{t("recipe.ingredients")}</h3>
               <ul className="space-y-2">
