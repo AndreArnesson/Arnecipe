@@ -84,15 +84,42 @@ export function RecipeImageManager({ images, onChange }: RecipeImageManagerProps
         </div>
       )}
 
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => fileInputRef.current?.click()}
-        className={`w-full border-dashed gap-2 ${images.length === 0 ? "h-32" : "h-10"}`}
-      >
-        <ImagePlus className="h-5 w-5" />
-        {images.length === 0 ? t("addRecipe.uploadImage") : t("addRecipe.addMoreImages")}
-      </Button>
+      <div className={`flex gap-2 ${images.length === 0 ? "flex-col" : ""}`}>
+        <Button
+          type="button"
+          variant="outline"
+          className={`flex-1 border-dashed gap-2 ${images.length === 0 ? "h-16" : "h-10"}`}
+          onClick={() => {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = "image/*";
+            input.setAttribute("capture", "environment");
+            input.multiple = true;
+            input.onchange = (e) => {
+              const files = Array.from((e.target as HTMLInputElement).files || []);
+              const newImages: ImageItem[] = files.map((file) => ({
+                file,
+                preview: URL.createObjectURL(file),
+                caption: "",
+              }));
+              onChange([...images, ...newImages]);
+            };
+            input.click();
+          }}
+        >
+          <Camera className="h-5 w-5" />
+          {t("addRecipe.takePhoto")}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => fileInputRef.current?.click()}
+          className={`flex-1 border-dashed gap-2 ${images.length === 0 ? "h-16" : "h-10"}`}
+        >
+          <ImagePlus className="h-5 w-5" />
+          {t("addRecipe.chooseFromLibrary")}
+        </Button>
+      </div>
     </div>
   );
 }
