@@ -283,6 +283,8 @@ export const translations = {
     "recipe.stopCooking": "Stop",
     "recipe.cookingProgress": "Progress",
     "recipe.cookingDone": "All steps done! 🎉",
+    "recipe.compactMode": "Compact",
+    "recipe.fullMode": "Full view",
     "share.notFound": "Recipe not found",
     "share.notFoundDescription": "This share link is invalid or has been removed.",
 
