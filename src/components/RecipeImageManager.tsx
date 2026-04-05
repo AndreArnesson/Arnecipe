@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ImagePlus, X, GripVertical } from "lucide-react";
+import { ImagePlus, X, Camera } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageContext";
 
 export interface ImageItem {
