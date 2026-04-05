@@ -66,6 +66,8 @@ export const translations = {
     "recipe.stopCooking": "Avsluta",
     "recipe.cookingProgress": "Framsteg",
     "recipe.cookingDone": "Alla steg klara! 🎉",
+    "recipe.compactMode": "Kompakt",
+    "recipe.fullMode": "Full vy",
     "share.notFound": "Receptet hittades inte",
     "share.notFoundDescription": "Denna delningslänk är ogiltig eller har tagits bort.",
 
