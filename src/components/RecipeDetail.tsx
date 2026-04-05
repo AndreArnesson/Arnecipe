@@ -617,11 +617,23 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
             <div className="flex items-center gap-1 flex-wrap">
               <WakeLockButton />
               {isCooking ? (
-                <Button variant="outline" size="sm" onClick={stopCooking} className="gap-1.5 text-destructive border-destructive/30">
-                  <Square className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">{t("recipe.stopCooking")}</span>
-                  <span className="sm:hidden">Stop</span>
-                </Button>
+                <>
+                  <Button variant="outline" size="sm" onClick={stopCooking} className="gap-1.5 text-destructive border-destructive/30">
+                    <Square className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{t("recipe.stopCooking")}</span>
+                    <span className="sm:hidden">Stop</span>
+                  </Button>
+                  <Button
+                    variant={isCompact ? "secondary" : "outline"}
+                    size="sm"
+                    onClick={() => setIsCompact(!isCompact)}
+                    className="gap-1.5"
+                    title={isCompact ? t("recipe.fullMode") : t("recipe.compactMode")}
+                  >
+                    {isCompact ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
+                    <span className="hidden sm:inline">{isCompact ? t("recipe.fullMode") : t("recipe.compactMode")}</span>
+                  </Button>
+                </>
               ) : (
                 <Button variant="default" size="sm" onClick={startCooking} className="gap-1.5">
                   <Play className="h-3.5 w-3.5" />
