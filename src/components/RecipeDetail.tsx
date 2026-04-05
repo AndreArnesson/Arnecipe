@@ -85,6 +85,8 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
 
   // Cooking mode state
   const [isCooking, setIsCooking] = useState(false);
+  const [isCompact, setIsCompact] = useState(false);
+  const [ingredientsOpen, setIngredientsOpen] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [checkedSteps, setCheckedSteps] = useState<Set<number>>(new Set());
 
