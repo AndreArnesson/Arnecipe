@@ -415,36 +415,36 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
           {/* AI Input Mode Tabs */}
           {!showTranscriptPreview && (
             <div className="space-y-3">
-              <div className="flex gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <Button
                   type="button"
                   variant={aiInputMode === "voice" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setAiInputMode("voice")}
-                  className="gap-2"
+                  className="gap-1 text-xs sm:text-sm px-2 sm:px-3"
                 >
-                  <Mic className="h-4 w-4" />
-                  {t("addRecipe.voiceInput")}
+                  <Mic className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{t("addRecipe.voiceInput")}</span>
                 </Button>
                 <Button
                   type="button"
                   variant={aiInputMode === "text" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setAiInputMode("text")}
-                  className="gap-2"
+                  className="gap-1 text-xs sm:text-sm px-2 sm:px-3"
                 >
-                  <MessageSquareText className="h-4 w-4" />
-                  {t("addRecipe.aiPrompt")}
+                  <MessageSquareText className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{t("addRecipe.aiPrompt")}</span>
                 </Button>
                 <Button
                   type="button"
                   variant={aiInputMode === "photo" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setAiInputMode("photo")}
-                  className="gap-2"
+                  className="gap-1 text-xs sm:text-sm px-2 sm:px-3"
                 >
-                  <Camera className="h-4 w-4" />
-                  {t("addRecipe.photoInput")}
+                  <Camera className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{t("addRecipe.photoInput")}</span>
                 </Button>
               </div>
 
@@ -554,25 +554,45 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
                   )}
 
                   {!isParsingImage && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className={`w-full border-dashed gap-2 ${!photoPreview ? "h-32" : "h-10"}`}
-                      onClick={() => {
-                        const input = document.createElement("input");
-                        input.type = "file";
-                        input.accept = "image/*";
-                        input.capture = "environment";
-                        input.onchange = (e) => {
-                          const file = (e.target as HTMLInputElement).files?.[0];
-                          if (file) handlePhotoParse(file);
-                        };
-                        input.click();
-                      }}
-                    >
-                      <Camera className="h-5 w-5" />
-                      {t("addRecipe.takePhoto")}
-                    </Button>
+                    <div className={`flex gap-2 ${!photoPreview ? "flex-col" : ""}`}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={`flex-1 border-dashed gap-2 ${!photoPreview ? "h-16" : "h-10"}`}
+                        onClick={() => {
+                          const input = document.createElement("input");
+                          input.type = "file";
+                          input.accept = "image/*";
+                          input.setAttribute("capture", "environment");
+                          input.onchange = (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (file) handlePhotoParse(file);
+                          };
+                          input.click();
+                        }}
+                      >
+                        <Camera className="h-5 w-5" />
+                        {t("addRecipe.takePhoto")}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={`flex-1 border-dashed gap-2 ${!photoPreview ? "h-16" : "h-10"}`}
+                        onClick={() => {
+                          const input = document.createElement("input");
+                          input.type = "file";
+                          input.accept = "image/*";
+                          input.onchange = (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (file) handlePhotoParse(file);
+                          };
+                          input.click();
+                        }}
+                      >
+                        <ImagePlus className="h-5 w-5" />
+                        {t("addRecipe.chooseFromLibrary")}
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}
@@ -642,7 +662,7 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
 
           {/* Rating is now set after saving via the recipe detail view */}
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="prepTime">{t("addRecipe.prepTimeLabel")}</Label>
               <Input
