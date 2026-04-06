@@ -68,6 +68,8 @@ export const translations = {
     "recipe.cookingDone": "Alla steg klara! 🎉",
     "recipe.compactMode": "Kompakt",
     "recipe.fullMode": "Full vy",
+    "recipe.enriching": "Förbereder...",
+    "recipe.enrichFailed": "Kunde inte förbereda kompakt vy",
     "share.notFound": "Receptet hittades inte",
     "share.notFoundDescription": "Denna delningslänk är ogiltig eller har tagits bort.",
 
@@ -285,6 +287,8 @@ export const translations = {
     "recipe.cookingDone": "All steps done! 🎉",
     "recipe.compactMode": "Compact",
     "recipe.fullMode": "Full view",
+    "recipe.enriching": "Preparing...",
+    "recipe.enrichFailed": "Could not prepare compact view",
     "share.notFound": "Recipe not found",
     "share.notFoundDescription": "This share link is invalid or has been removed.",
 
