@@ -89,6 +89,9 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
   const [ingredientsOpen, setIngredientsOpen] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [checkedSteps, setCheckedSteps] = useState<Set<number>>(new Set());
+  const [enrichedInstructions, setEnrichedInstructions] = useState<string[] | null>(null);
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [enrichedRecipeId, setEnrichedRecipeId] = useState<string | null>(null);
 
   const toggleIngredient = (index: number) => {
     setCheckedIngredients(prev => {
@@ -106,6 +109,42 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
     });
   };
 
+  const fetchEnrichedInstructions = useCallback(async (r: Recipe) => {
+    if (enrichedRecipeId === r.id && enrichedInstructions) return;
+    setIsEnriching(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-instructions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            ingredients: r.ingredients,
+            instructions: r.instructions,
+            language,
+          }),
+        }
+      );
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to enrich");
+      }
+      const data = await response.json();
+      if (data.enrichedInstructions?.length) {
+        setEnrichedInstructions(data.enrichedInstructions);
+        setEnrichedRecipeId(r.id);
+      }
+    } catch (err) {
+      console.error("Enrich error:", err);
+      toast.error(t("recipe.enrichFailed"));
+    } finally {
+      setIsEnriching(false);
+    }
+  }, [enrichedRecipeId, enrichedInstructions, language, t]);
+
   const startCooking = () => {
     setCheckedIngredients(new Set());
     setCheckedSteps(new Set());
@@ -114,11 +153,21 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
 
   const stopCooking = () => {
     setIsCooking(false);
+    setIsCompact(false);
   };
 
+  const toggleCompact = useCallback(() => {
+    if (!isCompact && recipe) {
+      fetchEnrichedInstructions(recipe);
+    }
+    setIsCompact(prev => !prev);
+  }, [isCompact, recipe, fetchEnrichedInstructions]);
+
   // Calculate cooking progress
-  const cookingTotalItems = recipe ? (recipe.ingredients.filter(i => !i.startsWith("## ")).length + recipe.instructions.length) : 0;
-  const cookingCheckedItems = checkedIngredients.size + checkedSteps.size;
+  const ingredientCount = recipe ? recipe.ingredients.filter(i => !i.startsWith("## ")).length : 0;
+  const instructionCount = recipe ? recipe.instructions.length : 0;
+  const cookingTotalItems = isCompact && enrichedInstructions ? instructionCount : (ingredientCount + instructionCount);
+  const cookingCheckedItems = isCompact && enrichedInstructions ? checkedSteps.size : (checkedIngredients.size + checkedSteps.size);
   const cookingProgress = cookingTotalItems > 0 ? Math.round((cookingCheckedItems / cookingTotalItems) * 100) : 0;
 
   // Fetch ratings for current recipe
@@ -626,12 +675,13 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
                   <Button
                     variant={isCompact ? "secondary" : "outline"}
                     size="sm"
-                    onClick={() => setIsCompact(!isCompact)}
+                    onClick={toggleCompact}
                     className="gap-1.5"
                     title={isCompact ? t("recipe.fullMode") : t("recipe.compactMode")}
+                    disabled={isEnriching}
                   >
-                    {isCompact ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
-                    <span className="hidden sm:inline">{isCompact ? t("recipe.fullMode") : t("recipe.compactMode")}</span>
+                    {isEnriching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isCompact ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
+                    <span className="hidden sm:inline">{isEnriching ? t("recipe.enriching") : isCompact ? t("recipe.fullMode") : t("recipe.compactMode")}</span>
                   </Button>
                 </>
               ) : (
@@ -743,8 +793,8 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
             </>
           )}
 
-          {/* Compact mode: collapsible ingredient panel */}
-          {isCooking && isCompact && recipe.ingredients.length > 0 && (
+          {/* Compact mode: ingredients are woven into instructions, show fallback collapsible only if enrichment failed */}
+          {isCooking && isCompact && !enrichedInstructions && recipe.ingredients.length > 0 && (
             <Collapsible open={ingredientsOpen} onOpenChange={setIngredientsOpen}>
               <CollapsibleTrigger asChild>
                 <button className="w-full flex items-center justify-between p-3 rounded-lg bg-secondary/60 border border-border hover:bg-secondary/80 transition-colors">
@@ -810,7 +860,7 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
             <div>
               <h3 className="font-display text-lg font-semibold mb-3">{t("recipe.instructions")}</h3>
               <ol className="space-y-4">
-                {recipe.instructions.map((instruction, index) => (
+                {(isCooking && isCompact && enrichedInstructions ? enrichedInstructions : recipe.instructions).map((instruction, index) => (
                   <li key={index} className={`flex gap-4 ${isCooking ? 'cursor-pointer' : ''}`} onClick={isCooking ? () => toggleStep(index) : undefined}>
                     {isCooking ? (
                       <div className="flex items-center justify-center w-8 h-8 shrink-0">
