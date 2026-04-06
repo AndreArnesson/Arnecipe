@@ -791,8 +791,8 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
             </>
           )}
 
-          {/* Compact mode: collapsible ingredient panel */}
-          {isCooking && isCompact && recipe.ingredients.length > 0 && (
+          {/* Compact mode: ingredients are woven into instructions, show fallback collapsible only if enrichment failed */}
+          {isCooking && isCompact && !enrichedInstructions && recipe.ingredients.length > 0 && (
             <Collapsible open={ingredientsOpen} onOpenChange={setIngredientsOpen}>
               <CollapsibleTrigger asChild>
                 <button className="w-full flex items-center justify-between p-3 rounded-lg bg-secondary/60 border border-border hover:bg-secondary/80 transition-colors">
