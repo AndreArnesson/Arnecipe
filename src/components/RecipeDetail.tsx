@@ -858,7 +858,7 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
             <div>
               <h3 className="font-display text-lg font-semibold mb-3">{t("recipe.instructions")}</h3>
               <ol className="space-y-4">
-                {recipe.instructions.map((instruction, index) => (
+                {(isCooking && isCompact && enrichedInstructions ? enrichedInstructions : recipe.instructions).map((instruction, index) => (
                   <li key={index} className={`flex gap-4 ${isCooking ? 'cursor-pointer' : ''}`} onClick={isCooking ? () => toggleStep(index) : undefined}>
                     {isCooking ? (
                       <div className="flex items-center justify-center w-8 h-8 shrink-0">
