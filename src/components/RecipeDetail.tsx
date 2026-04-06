@@ -164,8 +164,10 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
   }, [isCompact, recipe, fetchEnrichedInstructions]);
 
   // Calculate cooking progress
-  const cookingTotalItems = recipe ? (recipe.ingredients.filter(i => !i.startsWith("## ")).length + recipe.instructions.length) : 0;
-  const cookingCheckedItems = checkedIngredients.size + checkedSteps.size;
+  const ingredientCount = recipe ? recipe.ingredients.filter(i => !i.startsWith("## ")).length : 0;
+  const instructionCount = recipe ? recipe.instructions.length : 0;
+  const cookingTotalItems = isCompact && enrichedInstructions ? instructionCount : (ingredientCount + instructionCount);
+  const cookingCheckedItems = isCompact && enrichedInstructions ? checkedSteps.size : (checkedIngredients.size + checkedSteps.size);
   const cookingProgress = cookingTotalItems > 0 ? Math.round((cookingCheckedItems / cookingTotalItems) * 100) : 0;
 
   // Fetch ratings for current recipe
