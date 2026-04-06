@@ -89,6 +89,9 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
   const [ingredientsOpen, setIngredientsOpen] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [checkedSteps, setCheckedSteps] = useState<Set<number>>(new Set());
+  const [enrichedInstructions, setEnrichedInstructions] = useState<string[] | null>(null);
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [enrichedRecipeId, setEnrichedRecipeId] = useState<string | null>(null);
 
   const toggleIngredient = (index: number) => {
     setCheckedIngredients(prev => {
