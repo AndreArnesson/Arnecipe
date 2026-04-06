@@ -673,12 +673,13 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
                   <Button
                     variant={isCompact ? "secondary" : "outline"}
                     size="sm"
-                    onClick={() => setIsCompact(!isCompact)}
+                    onClick={toggleCompact}
                     className="gap-1.5"
                     title={isCompact ? t("recipe.fullMode") : t("recipe.compactMode")}
+                    disabled={isEnriching}
                   >
-                    {isCompact ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
-                    <span className="hidden sm:inline">{isCompact ? t("recipe.fullMode") : t("recipe.compactMode")}</span>
+                    {isEnriching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isCompact ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
+                    <span className="hidden sm:inline">{isEnriching ? t("recipe.enriching") : isCompact ? t("recipe.fullMode") : t("recipe.compactMode")}</span>
                   </Button>
                 </>
               ) : (
