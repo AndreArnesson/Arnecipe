@@ -93,7 +93,19 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
   const [isEnriching, setIsEnriching] = useState(false);
   const [enrichedRecipeId, setEnrichedRecipeId] = useState<string | null>(null);
 
-  const toggleIngredient = (index: number) => {
+  // Reset all cooking state when recipe changes
+  useEffect(() => {
+    setIsCooking(false);
+    setIsCompact(false);
+    setIngredientsOpen(false);
+    setCheckedIngredients(new Set());
+    setCheckedSteps(new Set());
+    setEnrichedInstructions(null);
+    setIsEnriching(false);
+    setEnrichedRecipeId(null);
+  }, [recipe?.id]);
+
+
     setCheckedIngredients(prev => {
       const next = new Set(prev);
       next.has(index) ? next.delete(index) : next.add(index);
