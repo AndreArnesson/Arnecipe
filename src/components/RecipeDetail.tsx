@@ -656,7 +656,7 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { setIsCooking(false); setIsCompact(false); } onOpenChange(o); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
             <div className="flex flex-col gap-2 pr-8">
