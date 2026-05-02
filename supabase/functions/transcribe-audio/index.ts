@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+﻿import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
@@ -13,9 +13,8 @@ serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY is not configured");
+    const GOOGLE_AI_KEY = Deno.env.get("GOOGLE_AI_KEY");
+    if (!GOOGLE_AI_KEY) {
       return new Response(
         JSON.stringify({ error: "Speech-to-text service not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -32,85 +31,50 @@ serve(async (req) => {
       );
     }
 
-    console.log("Transcribing audio file:", audioFile.name, "Size:", audioFile.size);
-
-    // Convert audio to base64
     const audioBuffer = await audioFile.arrayBuffer();
     const base64Audio = base64Encode(audioBuffer);
+    const mimeType = audioFile.type || "audio/webm";
 
-    // Determine MIME type
-    let mimeType = audioFile.type || "audio/webm";
-    if (mimeType === "audio/webm") {
-      mimeType = "audio/webm";
-    }
-
-    console.log("Audio MIME type:", mimeType);
-
-    // Use Gemini for transcription (it supports audio input)
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "user",
-            content: [
+    // Use native Gemini API for audio (OpenAI-compat endpoint doesn't support audio input)
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_AI_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
               {
-                type: "text",
-                text: "Transcribe this audio recording exactly as spoken. The audio may be in English or Swedish - transcribe in whatever language is being spoken. Return only the transcription text, nothing else. If you cannot understand parts, do your best to transcribe what you hear.",
+                text: "Transcribe this audio recording exactly as spoken. The audio may be in English or Swedish â€” transcribe in whatever language is being spoken. Return only the transcription text, nothing else.",
               },
               {
-                type: "input_audio",
-                input_audio: {
+                inline_data: {
+                  mime_type: mimeType,
                   data: base64Audio,
-                  format: mimeType.includes("webm") ? "webm" : mimeType.includes("mp4") ? "mp4" : "wav",
                 },
               },
             ],
-          },
-        ],
-      }),
-    });
+          }],
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error("AI transcription error:", response.status, errorText);
-      
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limits exceeded, please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required, please add funds." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      return new Response(
-        JSON.stringify({ error: "Transcription failed" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limits exceeded, please try again later." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Transcription failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const data = await response.json();
-    const transcription = data.choices?.[0]?.message?.content;
+    const transcription = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!transcription) {
-      console.error("No transcription in response");
       return new Response(
         JSON.stringify({ error: "Failed to transcribe audio" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    console.log("Transcription successful:", transcription.substring(0, 100));
 
     return new Response(JSON.stringify({ text: transcription }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -123,3 +87,4 @@ serve(async (req) => {
     );
   }
 });
+

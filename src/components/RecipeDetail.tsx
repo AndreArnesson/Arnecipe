@@ -105,7 +105,7 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
     setEnrichedRecipeId(null);
   }, [recipe?.id]);
 
-
+  const toggleIngredient = (index: number) => {
     setCheckedIngredients(prev => {
       const next = new Set(prev);
       next.has(index) ? next.delete(index) : next.add(index);

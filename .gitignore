@@ -12,6 +12,17 @@ dist
 dist-ssr
 *.local
 
+# Environment variables (contains secrets)
+.env
+.env.*
+!.env.example
+
+# Migration data (contains exported user data)
+json_migrate/
+
+# Supabase temp files
+supabase/.temp/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
