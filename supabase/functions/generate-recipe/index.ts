@@ -27,7 +27,7 @@ Return a JSON object with:
 - prepTime: Preparation time in minutes (number)
 - cookTime: Cooking time in minutes (number)
 - servings: Number of servings (number)
-- category: One of: "FÃ¶rrÃ¤tt", "HuvudrÃ¤tt", "EfterrÃ¤tt", "Bakning", "Sallad", "Soppa", "Frukost", "MellanmÃ¥l", "Dryck", "Ã–vrigt"
+- category: One of: "Förrätt", "Huvudrätt", "Efterrätt", "Bakning", "Sallad", "Soppa", "Frukost", "Mellanmål", "Dryck", "Övrigt"
 
 Only return the JSON object, no markdown or other text.`;
 
@@ -45,7 +45,8 @@ Only return the JSON object, no markdown or other text.`;
     }
 
     const data = await response.json();
-    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const parts = data.candidates?.[0]?.content?.parts ?? [];
+    const content = (parts.find((p: { thought?: boolean }) => !p.thought) ?? parts[0])?.text;
     if (!content) return new Response(JSON.stringify({ error: "Failed to generate recipe" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     let recipe;

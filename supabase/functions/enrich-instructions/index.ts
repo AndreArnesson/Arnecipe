@@ -47,7 +47,8 @@ Only return the JSON object, no markdown or other text.`;
     }
 
     const data = await response.json();
-    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const parts = data.candidates?.[0]?.content?.parts ?? [];
+    const content = (parts.find((p: { thought?: boolean }) => !p.thought) ?? parts[0])?.text;
     if (!content) return new Response(JSON.stringify({ error: "Failed to enrich instructions" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     let result;

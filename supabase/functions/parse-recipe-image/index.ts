@@ -18,17 +18,17 @@ serve(async (req) => {
     const GOOGLE_AI_KEY = Deno.env.get("GOOGLE_AI_KEY");
     if (!GOOGLE_AI_KEY) return new Response(JSON.stringify({ error: "AI service not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    const prompt = `Extract the recipe from this image. The image may contain text in English or Swedish â€” always respond in the SAME language as the text in the image.
+    const prompt = `Extract the recipe from this image. The image may contain text in English or Swedish – always respond in the SAME language as the text in the image.
 
 Return a JSON object with:
 - title: A clear recipe title
 - description: A brief description (1-2 sentences)
-- ingredients: Array of ingredient strings with quantities. If the recipe has distinct sections, prefix each section header with "## ".
+- ingredients: Array of ingredient strings with quantities. If the recipe has distinct sections, prefix each section header with “## “.
 - instructions: Array of step-by-step instructions
 - prepTime: Estimated preparation time in minutes (number)
 - cookTime: Estimated cooking time in minutes (number)
 - servings: Estimated number of servings (number)
-- category: One of: "FÃ¶rrÃ¤tt", "HuvudrÃ¤tt", "EfterrÃ¤tt", "Bakning", "Sallad", "Soppa", "Frukost", "MellanmÃ¥l", "Dryck", "Ã–vrigt"
+- category: One of: “Förrätt”, “Huvudrätt”, “Efterrätt”, “Bakning”, “Sallad”, “Soppa”, “Frukost”, “Mellanmål”, “Dryck”, “Övrigt”
 
 Only return the JSON object, no markdown or other text.`;
 
@@ -53,7 +53,8 @@ Only return the JSON object, no markdown or other text.`;
     }
 
     const data = await response.json();
-    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const parts = data.candidates?.[0]?.content?.parts ?? [];
+    const content = (parts.find((p: { thought?: boolean }) => !p.thought) ?? parts[0])?.text;
     if (!content) return new Response(JSON.stringify({ error: "Failed to parse recipe from image" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     let recipe;

@@ -125,27 +125,11 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
     if (enrichedRecipeId === r.id && enrichedInstructions) return;
     setIsEnriching(true);
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-instructions`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({
-            ingredients: r.ingredients,
-            instructions: r.instructions,
-            language,
-          }),
-        }
-      );
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || "Failed to enrich");
-      }
-      const data = await response.json();
-      if (data.enrichedInstructions?.length) {
+      const { data, error } = await supabase.functions.invoke("enrich-instructions", {
+        body: { ingredients: r.ingredients, instructions: r.instructions, language },
+      });
+      if (error) throw error;
+      if (data?.enrichedInstructions?.length) {
         setEnrichedInstructions(data.enrichedInstructions);
         setEnrichedRecipeId(r.id);
       }
