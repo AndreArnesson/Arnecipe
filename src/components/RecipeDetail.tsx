@@ -161,7 +161,7 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
 
   // Calculate cooking progress
   const ingredientCount = recipe ? recipe.ingredients.filter(i => !i.startsWith("## ")).length : 0;
-  const instructionCount = recipe ? recipe.instructions.length : 0;
+  const instructionCount = recipe ? recipe.instructions.filter(i => !i.startsWith("## ")).length : 0;
   const cookingTotalItems = isCompact && enrichedInstructions ? instructionCount : (ingredientCount + instructionCount);
   const cookingCheckedItems = isCompact && enrichedInstructions ? checkedSteps.size : (checkedIngredients.size + checkedSteps.size);
   const cookingProgress = cookingTotalItems > 0 ? Math.round((cookingCheckedItems / cookingTotalItems) * 100) : 0;
@@ -570,21 +570,41 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
               <SortableList
                 items={editInstructions}
                 onReorder={setEditInstructions}
-                renderItem={(inst, i) => (
-                  <div className="flex gap-2">
-                    <div className="flex items-center justify-center w-8 h-10 rounded-lg bg-primary/10 text-primary font-medium shrink-0">{i + 1}</div>
-                    <Textarea value={inst} onChange={(e) => { const n = [...editInstructions]; n[i] = e.target.value; setEditInstructions(n); }} rows={2} className="flex-1" />
-                    {editInstructions.length > 1 && (
-                      <Button type="button" variant="ghost" size="icon" onClick={() => setEditInstructions(editInstructions.filter((_, j) => j !== i))}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                )}
+                renderItem={(inst, i) => {
+                  const isSection = inst.startsWith("## ");
+                  const stepNum = editInstructions.slice(0, i).filter(s => !s.startsWith("## ")).length + 1;
+                  return (
+                    <div className="flex gap-2">
+                      {isSection ? (
+                        <Input
+                          value={inst.slice(3)}
+                          onChange={(e) => { const n = [...editInstructions]; n[i] = `## ${e.target.value}`; setEditInstructions(n); }}
+                          className="font-semibold bg-secondary/50"
+                          placeholder={t("addRecipe.sectionPlaceholder")}
+                        />
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-center w-8 h-10 rounded-lg bg-primary/10 text-primary font-medium shrink-0">{stepNum}</div>
+                          <Textarea value={inst} onChange={(e) => { const n = [...editInstructions]; n[i] = e.target.value; setEditInstructions(n); }} rows={2} className="flex-1" />
+                        </>
+                      )}
+                      {editInstructions.length > 1 && (
+                        <Button type="button" variant="ghost" size="icon" onClick={() => setEditInstructions(editInstructions.filter((_, j) => j !== i))}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  );
+                }}
               />
-              <Button type="button" variant="outline" size="sm" onClick={() => setEditInstructions([...editInstructions, ""])}>
-                <Plus className="h-4 w-4 mr-1" />{t("addRecipe.addStep")}
-              </Button>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setEditInstructions([...editInstructions, ""])}>
+                  <Plus className="h-4 w-4 mr-1" />{t("addRecipe.addStep")}
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setEditInstructions([...editInstructions, "## "])}>
+                  <Plus className="h-4 w-4 mr-1" />{t("addRecipe.addSection")}
+                </Button>
+              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row justify-between pt-4 border-t gap-3">
@@ -856,22 +876,38 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
             <div>
               <h3 className="font-display text-lg font-semibold mb-3">{t("recipe.instructions")}</h3>
               <ol className="space-y-4">
-                {(isCooking && isCompact && enrichedInstructions ? enrichedInstructions : recipe.instructions).map((instruction, index) => (
-                  <li key={index} className={`flex gap-4 ${isCooking ? 'cursor-pointer' : ''}`} onClick={isCooking ? () => toggleStep(index) : undefined}>
-                    {isCooking ? (
-                      <div className="flex items-center justify-center w-8 h-8 shrink-0">
-                        <Checkbox checked={checkedSteps.has(index)} onCheckedChange={() => toggleStep(index)} className="h-6 w-6" />
-                      </div>
-                    ) : (
-                      <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold shrink-0">
-                        {index + 1}
-                      </span>
-                    )}
-                    <p className={`pt-1 ${checkedSteps.has(index) && isCooking ? 'line-through text-muted-foreground' : ''}`}>
-                      <LinkifyText text={instruction} />
-                    </p>
-                  </li>
-                ))}
+                {(() => {
+                  const displayInstructions = isCooking && isCompact && enrichedInstructions ? enrichedInstructions : recipe.instructions;
+                  let stepNum = 0;
+                  return displayInstructions.map((instruction, index) => {
+                    const isSection = instruction.startsWith("## ");
+                    if (!isSection) stepNum++;
+                    const currentStep = stepNum;
+                    if (isSection) {
+                      return (
+                        <li key={index} className="pt-2 first:pt-0 list-none">
+                          <h4 className="font-display font-semibold text-base text-foreground">{instruction.slice(3)}</h4>
+                        </li>
+                      );
+                    }
+                    return (
+                      <li key={index} className={`flex gap-4 ${isCooking ? 'cursor-pointer' : ''}`} onClick={isCooking ? () => toggleStep(index) : undefined}>
+                        {isCooking ? (
+                          <div className="flex items-center justify-center w-8 h-8 shrink-0">
+                            <Checkbox checked={checkedSteps.has(index)} onCheckedChange={() => toggleStep(index)} className="h-6 w-6" />
+                          </div>
+                        ) : (
+                          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold shrink-0">
+                            {currentStep}
+                          </span>
+                        )}
+                        <p className={`pt-1 ${checkedSteps.has(index) && isCooking ? 'line-through text-muted-foreground' : ''}`}>
+                          <LinkifyText text={instruction} />
+                        </p>
+                      </li>
+                    );
+                  });
+                })()}
               </ol>
             </div>
           )}

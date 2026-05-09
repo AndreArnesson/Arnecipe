@@ -749,35 +749,56 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
             <SortableList
               items={instructions}
               onReorder={setInstructions}
-              renderItem={(instruction, index) => (
-                <div className="flex gap-2">
-                  <div className="flex items-center justify-center w-8 h-10 rounded-lg bg-primary/10 text-primary font-medium shrink-0">
-                    {index + 1}
+              renderItem={(instruction, index) => {
+                const isSection = instruction.startsWith("## ");
+                const stepNum = instructions.slice(0, index).filter(i => !i.startsWith("## ")).length + 1;
+                return (
+                  <div className="flex gap-2">
+                    {isSection ? (
+                      <Input
+                        placeholder={t("addRecipe.sectionPlaceholder")}
+                        value={instruction.slice(3)}
+                        onChange={(e) => updateInstruction(index, `## ${e.target.value}`)}
+                        className="font-semibold bg-secondary/50"
+                      />
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-center w-8 h-10 rounded-lg bg-primary/10 text-primary font-medium shrink-0">
+                          {stepNum}
+                        </div>
+                        <Textarea
+                          placeholder={`${t("addRecipe.stepPlaceholder")} ${stepNum}`}
+                          value={instruction}
+                          onChange={(e) => updateInstruction(index, e.target.value)}
+                          rows={2}
+                          className="flex-1"
+                        />
+                      </>
+                    )}
+                    {instructions.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeInstruction(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
-                  <Textarea
-                    placeholder={`${t("addRecipe.stepPlaceholder")} ${index + 1}`}
-                    value={instruction}
-                    onChange={(e) => updateInstruction(index, e.target.value)}
-                    rows={2}
-                    className="flex-1"
-                  />
-                  {instructions.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeInstruction(index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              )}
+                );
+              }}
             />
-            <Button type="button" variant="outline" size="sm" onClick={addInstruction}>
-              <Plus className="h-4 w-4 mr-1" />
-              {t("addRecipe.addStep")}
-            </Button>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={addInstruction}>
+                <Plus className="h-4 w-4 mr-1" />
+                {t("addRecipe.addStep")}
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setInstructions([...instructions, "## "])}>
+                <Plus className="h-4 w-4 mr-1" />
+                {t("addRecipe.addSection")}
+              </Button>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
