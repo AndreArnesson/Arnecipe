@@ -564,4 +564,4 @@ class ReciparnCard extends HTMLElement {
   }
 }
 
-customElements.define("arnecipe", ReciparnCard);
+customElements.define("arnecipe-card", ReciparnCard);
