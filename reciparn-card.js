@@ -4,6 +4,7 @@ class ReciparnCard extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this._recipes = [];
     this._selected = null;
+    this._checkedIngredients = new Set();
     this._search = "";
     this._loading = false;
     this._status = "";
@@ -60,6 +61,8 @@ class ReciparnCard extends HTMLElement {
     try {
       const data = await this._call({ action: "get", recipe_id: id });
       this._selected = data;
+      // Check all ingredients by default
+      this._checkedIngredients = new Set((data.ingredients ?? []).map((_, i) => i));
     } catch (e) {
       this._status = `Error: ${e.message}`;
     } finally {
@@ -70,14 +73,16 @@ class ReciparnCard extends HTMLElement {
 
   async _addToShoppingList() {
     if (!this._selected?.ingredients || this._adding) return;
+    const toAdd = this._selected.ingredients.filter((_, i) => this._checkedIngredients.has(i));
+    if (toAdd.length === 0) return;
     this._adding = true;
     this._status = "Adding ingredients…";
     this._render();
     try {
-      for (const ingredient of this._selected.ingredients) {
+      for (const ingredient of toAdd) {
         await this._hass.callService("shopping_list", "add_item", { name: ingredient });
       }
-      this._status = `✓ Added ${this._selected.ingredients.length} items to shopping list`;
+      this._status = `✓ Added ${toAdd.length} item${toAdd.length !== 1 ? "s" : ""} to shopping list`;
     } catch (e) {
       this._status = `Error: ${e.message}`;
     } finally {
@@ -130,7 +135,6 @@ class ReciparnCard extends HTMLElement {
           align-items: center;
           gap: 8px;
         }
-        .header-icon { font-size: 18px; }
         .search-wrap { padding: 0 12px 10px; }
         input[type="text"] {
           width: 100%;
@@ -149,7 +153,6 @@ class ReciparnCard extends HTMLElement {
         .recipe-item {
           display: flex;
           align-items: center;
-          justify-content: space-between;
           padding: 12px 16px;
           cursor: pointer;
           border-top: 1px solid var(--divider-color);
@@ -166,9 +169,8 @@ class ReciparnCard extends HTMLElement {
           border-radius: 4px;
           padding: 2px 6px;
           white-space: nowrap;
-          flex-shrink: 0;
         }
-        .chevron { color: var(--secondary-text-color); font-size: 12px; flex-shrink: 0; }
+        .chevron { color: var(--secondary-text-color); font-size: 12px; }
         .empty, .loading {
           padding: 28px 16px;
           text-align: center;
@@ -199,9 +201,7 @@ class ReciparnCard extends HTMLElement {
         }
       </style>
       <div class="card">
-        <div class="header">
-          <span class="header-icon">🍳</span> Reciparn
-        </div>
+        <div class="header">🍳 Reciparn</div>
         <div class="search-wrap">
           <input id="search" type="text" placeholder="Search recipes…" value="${this._esc(this._search)}">
         </div>
@@ -209,7 +209,7 @@ class ReciparnCard extends HTMLElement {
           ${this._loading
             ? `<div class="loading">Loading recipes…</div>`
             : filtered.length === 0
-              ? `<div class="empty">${this._recipes.length === 0 ? "No recipes found" : "No results for “" + this._esc(this._search) + "”"}</div>`
+              ? `<div class="empty">${this._recipes.length === 0 ? "No recipes found" : `No results for "${this._esc(this._search)}"`}</div>`
               : filtered.map((r) => `
                 <div class="recipe-item" data-id="${this._esc(r.id)}">
                   <span class="recipe-title">${this._esc(r.title)}</span>
@@ -234,7 +234,11 @@ class ReciparnCard extends HTMLElement {
 
   _renderDetail() {
     const { title, ingredients } = this._selected;
+    const checkedCount = this._checkedIngredients.size;
+    const total = (ingredients ?? []).length;
+    const allChecked = checkedCount === total;
     const isError = this._status.startsWith("Error");
+
     this.shadowRoot.innerHTML = `
       <style>
         :host { display: block; }
@@ -260,8 +264,6 @@ class ReciparnCard extends HTMLElement {
           font-size: 22px;
           padding: 0 4px 0 0;
           line-height: 1;
-          display: flex;
-          align-items: center;
         }
         .recipe-title {
           font-size: 15px;
@@ -269,27 +271,53 @@ class ReciparnCard extends HTMLElement {
           color: var(--primary-text-color);
           flex: 1;
         }
-        .ingredient-count {
+        .select-bar {
+          padding: 8px 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border-bottom: 1px solid var(--divider-color);
+          background: var(--secondary-background-color);
+        }
+        .select-label {
           font-size: 12px;
           color: var(--secondary-text-color);
         }
-        .ingredients { padding: 4px 0; max-height: 340px; overflow-y: auto; }
+        .select-all-btn {
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: var(--primary-color);
+          font-size: 12px;
+          padding: 0;
+          font-family: inherit;
+        }
+        .ingredients { max-height: 320px; overflow-y: auto; }
         .ingredient {
-          padding: 10px 16px;
-          border-bottom: 1px solid var(--divider-color);
-          font-size: 14px;
-          color: var(--primary-text-color);
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
+          padding: 10px 16px;
+          border-bottom: 1px solid var(--divider-color);
+          cursor: pointer;
         }
         .ingredient:last-child { border-bottom: none; }
-        .dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          background: var(--primary-color);
+        .ingredient:hover { background: var(--secondary-background-color); }
+        .ingredient input[type="checkbox"] {
+          width: 18px;
+          height: 18px;
           flex-shrink: 0;
+          cursor: pointer;
+          accent-color: var(--primary-color);
+        }
+        .ingredient-text {
+          font-size: 14px;
+          color: var(--primary-text-color);
+          flex: 1;
+        }
+        .ingredient.unchecked .ingredient-text {
+          color: var(--secondary-text-color);
+          text-decoration: line-through;
         }
         .actions { padding: 12px 16px; border-top: 1px solid var(--divider-color); }
         .add-btn {
@@ -317,26 +345,94 @@ class ReciparnCard extends HTMLElement {
         <div class="header">
           <button class="back-btn" id="back-btn">&#8592;</button>
           <span class="recipe-title">${this._esc(title)}</span>
-          <span class="ingredient-count">${ingredients?.length ?? 0} items</span>
+        </div>
+        <div class="select-bar">
+          <span class="select-label">${checkedCount} of ${total} selected</span>
+          <button class="select-all-btn" id="select-all-btn">
+            ${allChecked ? "Deselect all" : "Select all"}
+          </button>
         </div>
         <div class="ingredients">
-          ${(ingredients ?? []).map((i) => `
-            <div class="ingredient">
-              <span class="dot"></span>
-              ${this._esc(i)}
-            </div>
+          ${(ingredients ?? []).map((ingredient, i) => `
+            <label class="ingredient ${this._checkedIngredients.has(i) ? "" : "unchecked"}">
+              <input type="checkbox" class="ingredient-check" data-index="${i}"
+                ${this._checkedIngredients.has(i) ? "checked" : ""}>
+              <span class="ingredient-text">${this._esc(ingredient)}</span>
+            </label>
           `).join("")}
         </div>
         <div class="actions">
-          <button class="add-btn" id="add-btn" ${this._adding ? "disabled" : ""}>
+          <button class="add-btn" id="add-btn" ${this._adding || checkedCount === 0 ? "disabled" : ""}>
             ${this._adding
               ? "Adding…"
-              : `Add all ${ingredients?.length ?? 0} ingredients to shopping list`}
+              : checkedCount === 0
+                ? "No ingredients selected"
+                : `Add ${checkedCount} ingredient${checkedCount !== 1 ? "s" : ""} to shopping list`}
           </button>
           ${this._status ? `<div class="status">${this._esc(this._status)}</div>` : ""}
         </div>
       </div>
     `;
+  }
+
+  _updateListContent() {
+    const root = this.shadowRoot;
+    const listEl = root.querySelector(".list");
+    const footerEl = root.querySelector(".footer-bar");
+    const statusEl = root.querySelector(".status-bar");
+    if (!listEl) return;
+
+    const filtered = this._getFiltered();
+
+    listEl.innerHTML = filtered.length === 0
+      ? `<div class="empty">${this._recipes.length === 0 ? "No recipes found" : `No results for "${this._esc(this._search)}"`}</div>`
+      : filtered.map((r) => `
+          <div class="recipe-item" data-id="${this._esc(r.id)}">
+            <span class="recipe-title">${this._esc(r.title)}</span>
+            ${r.category ? `<span class="recipe-category">${this._esc(r.category)}</span>` : ""}
+            <span class="chevron">›</span>
+          </div>
+        `).join("");
+
+    listEl.querySelectorAll(".recipe-item").forEach((el) => {
+      el.addEventListener("click", () => this._selectRecipe(el.dataset.id));
+    });
+
+    if (footerEl) {
+      footerEl.querySelector(".footer-count").textContent =
+        `${filtered.length} recipe${filtered.length !== 1 ? "s" : ""}`;
+    }
+  }
+
+  _updateDetailControls() {
+    const root = this.shadowRoot;
+    const checkedCount = this._checkedIngredients.size;
+    const total = (this._selected?.ingredients ?? []).length;
+    const allChecked = checkedCount === total;
+
+    const btn = root.getElementById("add-btn");
+    if (btn) {
+      btn.disabled = this._adding || checkedCount === 0;
+      btn.textContent = this._adding
+        ? "Adding…"
+        : checkedCount === 0
+          ? "No ingredients selected"
+          : `Add ${checkedCount} ingredient${checkedCount !== 1 ? "s" : ""} to shopping list`;
+    }
+
+    const selectLabel = root.querySelector(".select-label");
+    if (selectLabel) selectLabel.textContent = `${checkedCount} of ${total} selected`;
+
+    const selectAllBtn = root.getElementById("select-all-btn");
+    if (selectAllBtn) selectAllBtn.textContent = allChecked ? "Deselect all" : "Select all";
+
+    root.querySelectorAll(".ingredient").forEach((el, i) => {
+      if (this._checkedIngredients.has(i)) {
+        el.classList.remove("unchecked");
+      } else {
+        el.classList.add("unchecked");
+      }
+    });
   }
 
   _attachListeners() {
@@ -346,9 +442,7 @@ class ReciparnCard extends HTMLElement {
     if (searchEl) {
       searchEl.addEventListener("input", (e) => {
         this._search = e.target.value;
-        this._renderList();
-        this._attachListeners();
-        root.getElementById("search")?.focus();
+        this._updateListContent();
       });
     }
 
@@ -360,6 +454,33 @@ class ReciparnCard extends HTMLElement {
       this._selected = null;
       this._status = "";
       this._render();
+    });
+
+    // Ingredient checkboxes — update state without re-rendering
+    root.querySelectorAll(".ingredient-check").forEach((cb) => {
+      cb.addEventListener("change", (e) => {
+        const idx = parseInt(e.target.dataset.index);
+        if (e.target.checked) {
+          this._checkedIngredients.add(idx);
+        } else {
+          this._checkedIngredients.delete(idx);
+        }
+        this._updateDetailControls();
+      });
+    });
+
+    // Select / deselect all
+    root.getElementById("select-all-btn")?.addEventListener("click", () => {
+      const total = (this._selected?.ingredients ?? []).length;
+      const allChecked = this._checkedIngredients.size === total;
+      if (allChecked) {
+        this._checkedIngredients.clear();
+        root.querySelectorAll(".ingredient-check").forEach((cb) => (cb.checked = false));
+      } else {
+        for (let i = 0; i < total; i++) this._checkedIngredients.add(i);
+        root.querySelectorAll(".ingredient-check").forEach((cb) => (cb.checked = true));
+      }
+      this._updateDetailControls();
     });
 
     root.getElementById("add-btn")?.addEventListener("click", () => {
