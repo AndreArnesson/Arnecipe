@@ -61,7 +61,6 @@ class ReciparnCard extends HTMLElement {
     try {
       const data = await this._call({ action: "get", recipe_id: id });
       this._selected = data;
-      // Check all ingredients by default
       this._checkedIngredients = new Set((data.ingredients ?? []).map((_, i) => i));
     } catch (e) {
       this._status = `Error: ${e.message}`;
@@ -105,6 +104,22 @@ class ReciparnCard extends HTMLElement {
       .replace(/"/g, "&quot;");
   }
 
+  _categoryColor(category) {
+    const map = {
+      "Förrätt": "#7c9eb2",
+      "Huvudrätt": "#c05a2c",
+      "Efterrätt": "#a06080",
+      "Bakning": "#b8860b",
+      "Sallad": "#5a8a5a",
+      "Soppa": "#7b6fa0",
+      "Frukost": "#e09040",
+      "Mellanmål": "#c08050",
+      "Dryck": "#4a90a4",
+      "Övrigt": "#888",
+    };
+    return map[category] || "#888";
+  }
+
   _render() {
     if (this._selected && !this._loading) {
       this._renderDetail();
@@ -118,113 +133,153 @@ class ReciparnCard extends HTMLElement {
     const filtered = this._getFiltered();
     this.shadowRoot.innerHTML = `
       <style>
-        :host { display: block; }
+        :host { display: block; font-family: var(--paper-font-body1_-_font-family, sans-serif); }
+        * { box-sizing: border-box; }
         .card {
-          background: var(--card-background-color);
+          background: var(--card-background-color, #fff);
           border-radius: var(--ha-card-border-radius, 12px);
           overflow: hidden;
-          box-shadow: var(--ha-card-box-shadow, none);
-          border: 1px solid var(--divider-color, transparent);
+          box-shadow: var(--ha-card-box-shadow, 0 2px 8px rgba(0,0,0,0.1));
         }
         .header {
-          padding: 16px 16px 10px;
-          font-size: 16px;
-          font-weight: 500;
-          color: var(--primary-text-color);
+          background: linear-gradient(135deg, #c05a2c 0%, #e07840 100%);
+          padding: 18px 16px 14px;
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
         }
-        .search-wrap { padding: 0 12px 10px; }
+        .header-icon { font-size: 24px; }
+        .header-title {
+          font-size: 18px;
+          font-weight: 600;
+          color: #fff;
+          letter-spacing: 0.3px;
+        }
+        .header-count {
+          margin-left: auto;
+          font-size: 12px;
+          color: rgba(255,255,255,0.75);
+          background: rgba(0,0,0,0.15);
+          padding: 2px 8px;
+          border-radius: 10px;
+        }
+        .search-wrap { padding: 12px 12px 8px; }
         input[type="text"] {
           width: 100%;
-          box-sizing: border-box;
-          padding: 8px 12px;
-          border: 1px solid var(--divider-color);
+          padding: 9px 12px 9px 36px;
+          border: 1.5px solid var(--divider-color, #e0e0e0);
           border-radius: 8px;
-          background: var(--secondary-background-color);
-          color: var(--primary-text-color);
+          background: var(--secondary-background-color, #f5f5f5);
+          color: var(--primary-text-color, #212121);
           font-size: 14px;
           outline: none;
           font-family: inherit;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: 10px center;
         }
-        input[type="text"]:focus { border-color: var(--primary-color); }
+        input[type="text"]:focus { border-color: #c05a2c; }
         .list { max-height: 380px; overflow-y: auto; }
         .recipe-item {
           display: flex;
           align-items: center;
           padding: 12px 16px;
           cursor: pointer;
-          border-top: 1px solid var(--divider-color);
-          gap: 8px;
+          border-top: 1px solid var(--divider-color, #f0f0f0);
+          gap: 10px;
+          transition: background 0.15s;
         }
-        .recipe-item:hover { background: var(--secondary-background-color); }
-        .recipe-item:active { opacity: 0.7; }
-        .recipe-title { font-size: 14px; color: var(--primary-text-color); flex: 1; }
+        .recipe-item:hover { background: rgba(192,90,44,0.06); }
+        .recipe-item:active { background: rgba(192,90,44,0.12); }
+        .recipe-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+        .recipe-title { font-size: 14px; color: var(--primary-text-color, #212121); flex: 1; font-weight: 500; }
         .recipe-category {
           font-size: 11px;
-          color: var(--secondary-text-color);
-          background: var(--secondary-background-color);
-          border: 1px solid var(--divider-color);
+          color: #fff;
           border-radius: 4px;
-          padding: 2px 6px;
+          padding: 2px 7px;
           white-space: nowrap;
+          font-weight: 500;
         }
-        .chevron { color: var(--secondary-text-color); font-size: 12px; }
+        .chevron { color: #bbb; font-size: 14px; }
         .empty, .loading {
-          padding: 28px 16px;
+          padding: 32px 16px;
           text-align: center;
-          color: var(--secondary-text-color);
+          color: var(--secondary-text-color, #888);
           font-size: 14px;
         }
+        .loading-spinner {
+          display: inline-block;
+          width: 20px;
+          height: 20px;
+          border: 2px solid #e0e0e0;
+          border-top-color: #c05a2c;
+          border-radius: 50%;
+          animation: spin 0.7s linear infinite;
+          margin-bottom: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
         .footer-bar {
           padding: 8px 16px;
-          border-top: 1px solid var(--divider-color);
+          border-top: 1px solid var(--divider-color, #f0f0f0);
           display: flex;
           align-items: center;
           justify-content: space-between;
+          background: var(--secondary-background-color, #fafafa);
         }
-        .footer-count { font-size: 12px; color: var(--secondary-text-color); }
+        .footer-count { font-size: 12px; color: var(--secondary-text-color, #888); }
         .refresh-btn {
           background: none;
           border: none;
           cursor: pointer;
-          color: var(--primary-color);
-          font-size: 13px;
+          color: #c05a2c;
+          font-size: 12px;
           padding: 4px 0;
+          font-family: inherit;
         }
         .status-bar {
-          padding: 8px 16px;
+          padding: 10px 16px;
           font-size: 12px;
-          color: var(--error-color, #c00);
-          border-top: 1px solid var(--divider-color);
+          color: #c00;
+          border-top: 1px solid var(--divider-color, #f0f0f0);
+          background: #fff5f5;
         }
       </style>
       <div class="card">
-        <div class="header">🍳 Reciparn</div>
+        <div class="header">
+          <span class="header-icon">🍳</span>
+          <span class="header-title">Reciparn</span>
+          ${!this._loading ? `<span class="header-count">${this._recipes.length} recept</span>` : ""}
+        </div>
         <div class="search-wrap">
-          <input id="search" type="text" placeholder="Search recipes…" value="${this._esc(this._search)}">
+          <input id="search" type="text" placeholder="Sök recept…" value="${this._esc(this._search)}">
         </div>
         <div class="list">
           ${this._loading
-            ? `<div class="loading">Loading recipes…</div>`
+            ? `<div class="loading"><div class="loading-spinner"></div><br>Laddar recept…</div>`
             : filtered.length === 0
-              ? `<div class="empty">${this._recipes.length === 0 ? "No recipes found" : `No results for "${this._esc(this._search)}"`}</div>`
+              ? `<div class="empty">${this._recipes.length === 0 ? "Inga recept hittades" : `Inga resultat för "${this._esc(this._search)}"`}</div>`
               : filtered.map((r) => `
                 <div class="recipe-item" data-id="${this._esc(r.id)}">
+                  <span class="recipe-dot" style="background:${this._categoryColor(r.category)}"></span>
                   <span class="recipe-title">${this._esc(r.title)}</span>
-                  ${r.category ? `<span class="recipe-category">${this._esc(r.category)}</span>` : ""}
+                  ${r.category ? `<span class="recipe-category" style="background:${this._categoryColor(r.category)}">${this._esc(r.category)}</span>` : ""}
                   <span class="chevron">›</span>
                 </div>
               `).join("")
           }
         </div>
         ${this._status
-          ? `<div class="status-bar">${this._esc(this._status)}</div>`
+          ? `<div class="status-bar">⚠ ${this._esc(this._status)}</div>`
           : !this._loading
             ? `<div class="footer-bar">
-                <span class="footer-count">${filtered.length} recipe${filtered.length !== 1 ? "s" : ""}</span>
-                <button class="refresh-btn" id="refresh-btn">Refresh</button>
+                <span class="footer-count">${filtered.length} recept${this._search ? " matchar" : ""}</span>
+                <button class="refresh-btn" id="refresh-btn">↻ Uppdatera</button>
               </div>`
             : ""
         }
@@ -238,37 +293,42 @@ class ReciparnCard extends HTMLElement {
     const total = (ingredients ?? []).length;
     const allChecked = checkedCount === total;
     const isError = this._status.startsWith("Error");
+    const isSuccess = this._status.startsWith("✓");
 
     this.shadowRoot.innerHTML = `
       <style>
-        :host { display: block; }
+        :host { display: block; font-family: var(--paper-font-body1_-_font-family, sans-serif); }
+        * { box-sizing: border-box; }
         .card {
-          background: var(--card-background-color);
+          background: var(--card-background-color, #fff);
           border-radius: var(--ha-card-border-radius, 12px);
           overflow: hidden;
-          box-shadow: var(--ha-card-box-shadow, none);
-          border: 1px solid var(--divider-color, transparent);
+          box-shadow: var(--ha-card-box-shadow, 0 2px 8px rgba(0,0,0,0.1));
         }
         .header {
-          padding: 12px 16px;
+          background: linear-gradient(135deg, #c05a2c 0%, #e07840 100%);
+          padding: 14px 16px;
           display: flex;
           align-items: center;
           gap: 10px;
-          border-bottom: 1px solid var(--divider-color);
         }
         .back-btn {
-          background: none;
+          background: rgba(255,255,255,0.2);
           border: none;
           cursor: pointer;
-          color: var(--primary-color);
-          font-size: 22px;
-          padding: 0 4px 0 0;
-          line-height: 1;
+          color: #fff;
+          font-size: 16px;
+          padding: 4px 10px;
+          border-radius: 6px;
+          line-height: 1.4;
+          font-family: inherit;
+          transition: background 0.15s;
         }
+        .back-btn:hover { background: rgba(255,255,255,0.3); }
         .recipe-title {
           font-size: 15px;
-          font-weight: 500;
-          color: var(--primary-text-color);
+          font-weight: 600;
+          color: #fff;
           flex: 1;
         }
         .select-bar {
@@ -276,80 +336,95 @@ class ReciparnCard extends HTMLElement {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          border-bottom: 1px solid var(--divider-color);
-          background: var(--secondary-background-color);
+          background: #fdf5f0;
+          border-bottom: 1px solid #f0e0d5;
         }
-        .select-label {
-          font-size: 12px;
-          color: var(--secondary-text-color);
-        }
+        .select-label { font-size: 12px; color: #c05a2c; font-weight: 500; }
         .select-all-btn {
           background: none;
-          border: none;
+          border: 1px solid #c05a2c;
           cursor: pointer;
-          color: var(--primary-color);
+          color: #c05a2c;
           font-size: 12px;
-          padding: 0;
+          padding: 3px 10px;
+          border-radius: 5px;
           font-family: inherit;
+          transition: all 0.15s;
         }
+        .select-all-btn:hover { background: #c05a2c; color: #fff; }
         .ingredients { max-height: 320px; overflow-y: auto; }
         .ingredient {
           display: flex;
           align-items: center;
           gap: 12px;
-          padding: 10px 16px;
-          border-bottom: 1px solid var(--divider-color);
+          padding: 11px 16px;
+          border-bottom: 1px solid var(--divider-color, #f0f0f0);
           cursor: pointer;
+          transition: background 0.1s;
         }
         .ingredient:last-child { border-bottom: none; }
-        .ingredient:hover { background: var(--secondary-background-color); }
+        .ingredient:hover { background: rgba(192,90,44,0.04); }
+        .ingredient.unchecked { opacity: 0.45; }
         .ingredient input[type="checkbox"] {
           width: 18px;
           height: 18px;
           flex-shrink: 0;
           cursor: pointer;
-          accent-color: var(--primary-color);
+          accent-color: #c05a2c;
         }
         .ingredient-text {
           font-size: 14px;
-          color: var(--primary-text-color);
+          color: var(--primary-text-color, #212121);
           flex: 1;
+          line-height: 1.4;
         }
-        .ingredient.unchecked .ingredient-text {
-          color: var(--secondary-text-color);
-          text-decoration: line-through;
+        .ingredient.unchecked .ingredient-text { text-decoration: line-through; }
+        .actions {
+          padding: 12px 16px;
+          border-top: 1px solid var(--divider-color, #f0f0f0);
+          background: var(--secondary-background-color, #fafafa);
         }
-        .actions { padding: 12px 16px; border-top: 1px solid var(--divider-color); }
         .add-btn {
           width: 100%;
-          padding: 11px;
-          background: var(--primary-color);
-          color: var(--text-primary-color, #fff);
+          padding: 12px;
+          background: linear-gradient(135deg, #c05a2c 0%, #e07840 100%);
+          color: #fff;
           border: none;
           border-radius: 8px;
           font-size: 14px;
-          font-weight: 500;
+          font-weight: 600;
           cursor: pointer;
           font-family: inherit;
-          transition: opacity 0.15s;
+          letter-spacing: 0.2px;
+          transition: opacity 0.15s, transform 0.1s;
+          box-shadow: 0 2px 6px rgba(192,90,44,0.35);
         }
-        .add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .add-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+        .add-btn:active:not(:disabled) { transform: translateY(0); }
+        .add-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
         .status {
           margin-top: 8px;
           font-size: 12px;
           text-align: center;
-          color: ${isError ? "var(--error-color, #c00)" : "var(--primary-color)"};
+          padding: 6px 10px;
+          border-radius: 6px;
+          font-weight: 500;
+          ${isError
+            ? "color: #c00; background: #fff5f5;"
+            : isSuccess
+              ? "color: #2e7d32; background: #f0faf0;"
+              : "color: #888; background: transparent;"}
         }
       </style>
       <div class="card">
         <div class="header">
-          <button class="back-btn" id="back-btn">&#8592;</button>
+          <button class="back-btn" id="back-btn">← Tillbaka</button>
           <span class="recipe-title">${this._esc(title)}</span>
         </div>
         <div class="select-bar">
-          <span class="select-label">${checkedCount} of ${total} selected</span>
+          <span class="select-label">🛒 ${checkedCount} av ${total} valda</span>
           <button class="select-all-btn" id="select-all-btn">
-            ${allChecked ? "Deselect all" : "Select all"}
+            ${allChecked ? "Avmarkera alla" : "Markera alla"}
           </button>
         </div>
         <div class="ingredients">
@@ -364,10 +439,10 @@ class ReciparnCard extends HTMLElement {
         <div class="actions">
           <button class="add-btn" id="add-btn" ${this._adding || checkedCount === 0 ? "disabled" : ""}>
             ${this._adding
-              ? "Adding…"
+              ? "⏳ Lägger till…"
               : checkedCount === 0
-                ? "No ingredients selected"
-                : `Add ${checkedCount} ingredient${checkedCount !== 1 ? "s" : ""} to shopping list`}
+                ? "Välj ingredienser ovan"
+                : `🛒 Lägg till ${checkedCount} ingrediens${checkedCount !== 1 ? "er" : ""}`}
           </button>
           ${this._status ? `<div class="status">${this._esc(this._status)}</div>` : ""}
         </div>
@@ -378,18 +453,17 @@ class ReciparnCard extends HTMLElement {
   _updateListContent() {
     const root = this.shadowRoot;
     const listEl = root.querySelector(".list");
-    const footerEl = root.querySelector(".footer-bar");
-    const statusEl = root.querySelector(".status-bar");
     if (!listEl) return;
 
     const filtered = this._getFiltered();
 
     listEl.innerHTML = filtered.length === 0
-      ? `<div class="empty">${this._recipes.length === 0 ? "No recipes found" : `No results for "${this._esc(this._search)}"`}</div>`
+      ? `<div class="empty">${this._recipes.length === 0 ? "Inga recept hittades" : `Inga resultat för "${this._esc(this._search)}"`}</div>`
       : filtered.map((r) => `
           <div class="recipe-item" data-id="${this._esc(r.id)}">
+            <span class="recipe-dot" style="background:${this._categoryColor(r.category)}"></span>
             <span class="recipe-title">${this._esc(r.title)}</span>
-            ${r.category ? `<span class="recipe-category">${this._esc(r.category)}</span>` : ""}
+            ${r.category ? `<span class="recipe-category" style="background:${this._categoryColor(r.category)}">${this._esc(r.category)}</span>` : ""}
             <span class="chevron">›</span>
           </div>
         `).join("");
@@ -398,10 +472,8 @@ class ReciparnCard extends HTMLElement {
       el.addEventListener("click", () => this._selectRecipe(el.dataset.id));
     });
 
-    if (footerEl) {
-      footerEl.querySelector(".footer-count").textContent =
-        `${filtered.length} recipe${filtered.length !== 1 ? "s" : ""}`;
-    }
+    const countEl = root.querySelector(".footer-count");
+    if (countEl) countEl.textContent = `${filtered.length} recept${this._search ? " matchar" : ""}`;
   }
 
   _updateDetailControls() {
@@ -414,17 +486,17 @@ class ReciparnCard extends HTMLElement {
     if (btn) {
       btn.disabled = this._adding || checkedCount === 0;
       btn.textContent = this._adding
-        ? "Adding…"
+        ? "⏳ Lägger till…"
         : checkedCount === 0
-          ? "No ingredients selected"
-          : `Add ${checkedCount} ingredient${checkedCount !== 1 ? "s" : ""} to shopping list`;
+          ? "Välj ingredienser ovan"
+          : `🛒 Lägg till ${checkedCount} ingrediens${checkedCount !== 1 ? "er" : ""}`;
     }
 
     const selectLabel = root.querySelector(".select-label");
-    if (selectLabel) selectLabel.textContent = `${checkedCount} of ${total} selected`;
+    if (selectLabel) selectLabel.textContent = `🛒 ${checkedCount} av ${total} valda`;
 
     const selectAllBtn = root.getElementById("select-all-btn");
-    if (selectAllBtn) selectAllBtn.textContent = allChecked ? "Deselect all" : "Select all";
+    if (selectAllBtn) selectAllBtn.textContent = allChecked ? "Avmarkera alla" : "Markera alla";
 
     root.querySelectorAll(".ingredient").forEach((el, i) => {
       if (this._checkedIngredients.has(i)) {
@@ -456,7 +528,6 @@ class ReciparnCard extends HTMLElement {
       this._render();
     });
 
-    // Ingredient checkboxes — update state without re-rendering
     root.querySelectorAll(".ingredient-check").forEach((cb) => {
       cb.addEventListener("change", (e) => {
         const idx = parseInt(e.target.dataset.index);
@@ -469,7 +540,6 @@ class ReciparnCard extends HTMLElement {
       });
     });
 
-    // Select / deselect all
     root.getElementById("select-all-btn")?.addEventListener("click", () => {
       const total = (this._selected?.ingredients ?? []).length;
       const allChecked = this._checkedIngredients.size === total;
