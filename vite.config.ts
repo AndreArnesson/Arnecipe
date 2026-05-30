@@ -50,7 +50,7 @@ VitePWA({
         navigateFallbackDenylist: [/^\/~oauth/],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/bxcxvocaupmwiudcvexo\.supabase\.co\/.*/i,
+            urlPattern: /^https:\/\/guonvkorystzpzypbtmy\.supabase\.co\/.*/i,
             handler: "NetworkFirst",
             options: {
               cacheName: "api-cache",
