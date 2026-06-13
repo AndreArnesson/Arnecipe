@@ -11,8 +11,13 @@ jobs:
     steps:
       - name: Ping Supabase
         run: |
-          curl -sf \
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            "https://guonvkorystzpzypbtmy.supabase.co/rest/v1/" \
-            && echo "Supabase is alive" \
-            || echo "Ping failed"
+            "https://guonvkorystzpzypbtmy.supabase.co/rest/v1/")
+          echo "HTTP status: $STATUS"
+          if [ "$STATUS" = "000" ]; then
+            echo "Ping failed - no response"
+            exit 1
+          else
+            echo "Supabase is alive"
+          fi
