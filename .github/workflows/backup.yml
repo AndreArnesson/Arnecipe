@@ -1,0 +1,78 @@
+name: Database Backup
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17 jq
+          echo "/usr/lib/postgresql/17/bin" >> $GITHUB_PATH
+
+      - name: Create backup
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
+          FILENAME="arnecipe-${TIMESTAMP}.sql"
+          ENCODED_PASS=$(python3 -c "import urllib.parse, os; print(urllib.parse.quote(os.environ['PGPASSWORD'], safe=''))")
+          DB_URL="postgresql://postgres.guonvkorystzpzypbtmy:${ENCODED_PASS}@${{ secrets.SUPABASE_DB_HOST }}:5432/postgres"
+          pg_dump "$DB_URL" --no-owner --no-acl -f "$FILENAME"
+          gzip "$FILENAME"
+          echo "BACKUP_FILE=${FILENAME}.gz" >> $GITHUB_ENV
+          echo "TIMESTAMP=${TIMESTAMP}" >> $GITHUB_ENV
+
+      - name: Upload to Supabase Storage
+        env:
+          SUPABASE_URL: https://guonvkorystzpzypbtmy.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          curl -s -X POST "$SUPABASE_URL/storage/v1/bucket" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"id":"db-backups","name":"db-backups","public":false}' || true
+
+          curl -sf -X POST "$SUPABASE_URL/storage/v1/object/db-backups/${{ env.BACKUP_FILE }}" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/gzip" \
+            --data-binary @"${{ env.BACKUP_FILE }}"
+
+      - name: Prune old backups (keep last 90)
+        env:
+          SUPABASE_URL: https://guonvkorystzpzypbtmy.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          FILES=$(curl -sf -X POST "$SUPABASE_URL/storage/v1/object/list/db-backups" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"prefix":"","limit":200,"sortBy":{"column":"created_at","order":"asc"}}')
+
+          TOTAL=$(echo "$FILES" | jq 'length')
+          DELETE_COUNT=$((TOTAL - 90))
+
+          if [ "$DELETE_COUNT" -gt 0 ]; then
+            TO_DELETE=$(echo "$FILES" | jq -r --argjson n "$DELETE_COUNT" '.[0:$n][].name')
+            while IFS= read -r name; do
+              curl -sf -X DELETE "$SUPABASE_URL/storage/v1/object/db-backups/$name" \
+                -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" || true
+              echo "Deleted: $name"
+            done <<< "$TO_DELETE"
+          else
+            echo "No old backups to prune (total: $TOTAL)"
+          fi
+
+      - name: Upload as GitHub artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ env.TIMESTAMP }}
+          path: ${{ env.BACKUP_FILE }}
+          retention-days: 90
