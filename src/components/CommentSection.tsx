@@ -18,13 +18,170 @@ interface Comment {
   replies?: Comment[];
 }
 
+interface CommentItemProps {
+  comment: Comment;
+  isReply?: boolean;
+  userId?: string;
+  editingId: string | null;
+  editContent: string;
+  replyingToId: string | null;
+  replyContent: string;
+  isSendingReply: boolean;
+  t: (key: string) => string;
+  formatDate: (d: string) => string;
+  getInitials: (name: string | null) => string;
+  setEditingId: (id: string | null) => void;
+  setEditContent: (v: string) => void;
+  setReplyingToId: (id: string | null) => void;
+  setReplyContent: (v: string) => void;
+  onEditSave: () => void;
+  onSendReply: (parent: Comment) => void;
+  onDelete: (id: string) => void;
+}
+
+function CommentItem({
+  comment, isReply = false, userId,
+  editingId, editContent, replyingToId, replyContent, isSendingReply,
+  t, formatDate, getInitials,
+  setEditingId, setEditContent, setReplyingToId, setReplyContent,
+  onEditSave, onSendReply, onDelete,
+}: CommentItemProps) {
+  return (
+    <div className={`flex gap-3 ${isReply ? "ml-8 mt-2" : ""}`}>
+      <Avatar className="h-7 w-7 shrink-0 mt-0.5">
+        <AvatarFallback className="text-xs">
+          {getInitials(comment.profiles?.display_name ?? null)}
+        </AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium">{comment.profiles?.display_name || "?"}</span>
+          <span className="text-xs text-muted-foreground">{formatDate(comment.created_at)}</span>
+        </div>
+        {editingId === comment.id ? (
+          <div className="mt-1 flex gap-2">
+            <Textarea
+              value={editContent}
+              onChange={e => setEditContent(e.target.value)}
+              rows={2}
+              className="flex-1 min-h-0"
+            />
+            <div className="flex flex-col gap-1">
+              <Button size="icon" variant="ghost" onClick={onEditSave} className="h-7 w-7">
+                <Check className="h-3.5 w-3.5" />
+              </Button>
+              <Button size="icon" variant="ghost" onClick={() => setEditingId(null)} className="h-7 w-7">
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm mt-0.5 whitespace-pre-wrap">{comment.content}</p>
+        )}
+
+        {replyingToId === comment.id && (
+          <div className="mt-2 flex gap-2">
+            <Textarea
+              value={replyContent}
+              onChange={e => setReplyContent(e.target.value)}
+              placeholder={t("comments.replyPlaceholder")}
+              rows={2}
+              className="flex-1 min-h-0 text-sm"
+              autoFocus
+              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSendReply(comment); } }}
+            />
+            <div className="flex flex-col gap-1">
+              <Button
+                size="icon"
+                onClick={() => onSendReply(comment)}
+                disabled={isSendingReply || !replyContent.trim()}
+                className="h-7 w-7"
+              >
+                {isSendingReply ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+              </Button>
+              <Button size="icon" variant="ghost" onClick={() => { setReplyingToId(null); setReplyContent(""); }} className="h-7 w-7">
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {comment.replies && comment.replies.length > 0 && (
+          <div className="mt-2 space-y-2 border-l-2 border-border pl-3">
+            {comment.replies.map(reply => (
+              <CommentItem
+                key={reply.id}
+                comment={reply}
+                isReply
+                userId={userId}
+                editingId={editingId}
+                editContent={editContent}
+                replyingToId={replyingToId}
+                replyContent={replyContent}
+                isSendingReply={isSendingReply}
+                t={t}
+                formatDate={formatDate}
+                getInitials={getInitials}
+                setEditingId={setEditingId}
+                setEditContent={setEditContent}
+                setReplyingToId={setReplyingToId}
+                setReplyContent={setReplyContent}
+                onEditSave={onEditSave}
+                onSendReply={onSendReply}
+                onDelete={onDelete}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-1 shrink-0">
+        {userId && !isReply && editingId !== comment.id && (
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 text-muted-foreground"
+            title={t("comments.reply")}
+            onClick={() => {
+              setReplyingToId(replyingToId === comment.id ? null : comment.id);
+              setReplyContent("");
+            }}
+          >
+            <CornerDownRight className="h-3 w-3" />
+          </Button>
+        )}
+        {userId === comment.user_id && editingId !== comment.id && (
+          <>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7"
+              onClick={() => { setEditingId(comment.id); setEditContent(comment.content); }}
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7"
+              onClick={() => onDelete(comment.id)}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface CommentSectionProps {
   recipeId: string;
   recipeOwnerId: string;
   recipeTitle: string;
 }
 
-export function CommentSection({ recipeId, recipeOwnerId, recipeTitle }: CommentSectionProps) {
+export function CommentSection({ recipeId, recipeOwnerId }: CommentSectionProps) {
   const { t } = useLanguage();
   const { user } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
@@ -58,7 +215,6 @@ export function CommentSection({ recipeId, recipeOwnerId, recipeTitle }: Comment
         replies: [],
       }));
 
-      // Nest replies under their parent
       const topLevel: Comment[] = [];
       const byId = new Map(mapped.map(c => [c.id, c]));
       for (const c of mapped) {
@@ -130,7 +286,6 @@ export function CommentSection({ recipeId, recipeOwnerId, recipeTitle }: Comment
       setReplyContent("");
       if (data) {
         await createNotification(parentComment.user_id, "reply_to_comment", data.id);
-        // Also notify recipe owner if different from parent comment author
         if (parentComment.user_id !== recipeOwnerId) {
           await createNotification(recipeOwnerId, "comment_on_recipe", data.id);
         }
@@ -173,116 +328,15 @@ export function CommentSection({ recipeId, recipeOwnerId, recipeTitle }: Comment
     return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
   };
 
-  const CommentItem = ({ comment, isReply = false }: { comment: Comment; isReply?: boolean }) => (
-    <div className={`flex gap-3 ${isReply ? "ml-8 mt-2" : ""}`}>
-      <Avatar className="h-7 w-7 shrink-0 mt-0.5">
-        <AvatarFallback className="text-xs">
-          {getInitials(comment.profiles?.display_name ?? null)}
-        </AvatarFallback>
-      </Avatar>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium">{comment.profiles?.display_name || "?"}</span>
-          <span className="text-xs text-muted-foreground">{formatDate(comment.created_at)}</span>
-        </div>
-        {editingId === comment.id ? (
-          <div className="mt-1 flex gap-2">
-            <Textarea
-              value={editContent}
-              onChange={e => setEditContent(e.target.value)}
-              rows={2}
-              className="flex-1 min-h-0"
-            />
-            <div className="flex flex-col gap-1">
-              <Button size="icon" variant="ghost" onClick={handleEditSave} className="h-7 w-7">
-                <Check className="h-3.5 w-3.5" />
-              </Button>
-              <Button size="icon" variant="ghost" onClick={() => setEditingId(null)} className="h-7 w-7">
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm mt-0.5 whitespace-pre-wrap">{comment.content}</p>
-        )}
-
-        {/* Reply box */}
-        {replyingToId === comment.id && (
-          <div className="mt-2 flex gap-2">
-            <Textarea
-              value={replyContent}
-              onChange={e => setReplyContent(e.target.value)}
-              placeholder={t("comments.replyPlaceholder")}
-              rows={2}
-              className="flex-1 min-h-0 text-sm"
-              autoFocus
-              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendReply(comment); } }}
-            />
-            <div className="flex flex-col gap-1">
-              <Button
-                size="icon"
-                onClick={() => handleSendReply(comment)}
-                disabled={isSendingReply || !replyContent.trim()}
-                className="h-7 w-7"
-              >
-                {isSendingReply ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-              </Button>
-              <Button size="icon" variant="ghost" onClick={() => { setReplyingToId(null); setReplyContent(""); }} className="h-7 w-7">
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Nested replies */}
-        {comment.replies && comment.replies.length > 0 && (
-          <div className="mt-2 space-y-2 border-l-2 border-border pl-3">
-            {comment.replies.map(reply => (
-              <CommentItem key={reply.id} comment={reply} isReply />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Action buttons */}
-      <div className="flex gap-1 shrink-0">
-        {user && !isReply && editingId !== comment.id && (
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7 text-muted-foreground"
-            title={t("comments.reply")}
-            onClick={() => {
-              setReplyingToId(replyingToId === comment.id ? null : comment.id);
-              setReplyContent("");
-            }}
-          >
-            <CornerDownRight className="h-3 w-3" />
-          </Button>
-        )}
-        {user?.id === comment.user_id && editingId !== comment.id && (
-          <>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7"
-              onClick={() => { setEditingId(comment.id); setEditContent(comment.content); }}
-            >
-              <Pencil className="h-3 w-3" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7"
-              onClick={() => handleDelete(comment.id)}
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          </>
-        )}
-      </div>
-    </div>
-  );
+  const sharedProps = {
+    userId: user?.id,
+    editingId, editContent, replyingToId, replyContent, isSendingReply,
+    t, formatDate, getInitials,
+    setEditingId, setEditContent, setReplyingToId, setReplyContent,
+    onEditSave: handleEditSave,
+    onSendReply: handleSendReply,
+    onDelete: handleDelete,
+  };
 
   return (
     <div className="space-y-4">
@@ -297,7 +351,7 @@ export function CommentSection({ recipeId, recipeOwnerId, recipeTitle }: Comment
       ) : (
         <div className="space-y-4">
           {comments.map(comment => (
-            <CommentItem key={comment.id} comment={comment} />
+            <CommentItem key={comment.id} comment={comment} {...sharedProps} />
           ))}
         </div>
       )}
