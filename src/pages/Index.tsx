@@ -16,6 +16,7 @@ import { ChefHat, LogOut, Search, Loader2, BookOpen, Users } from "lucide-react"
 import { toast } from "sonner";
 import { RecipeCategory } from "@/i18n/translations";
 import { PendingInviteBanner } from "@/components/PendingInviteBanner";
+import { NotificationBell } from "@/components/NotificationBell";
 
 interface Recipe {
   id: string;
@@ -37,6 +38,7 @@ interface Recipe {
   avgRating?: number;
   ratingCount?: number;
   userRating?: number;
+  commentCount?: number;
 }
 
 export default function Index() {
@@ -80,12 +82,18 @@ export default function Index() {
       const userIds = [...new Set((recipesData || []).map(r => r.user_id))];
       const recipeIds = (recipesData || []).map(r => r.id);
       
-      const [{ data: profilesData }, { data: ratingsData }] = await Promise.all([
+      const [{ data: profilesData }, { data: ratingsData }, { data: commentsData }] = await Promise.all([
         supabase.from("profiles").select("user_id, display_name").in("user_id", userIds),
         supabase.from("recipe_ratings").select("recipe_id, rating, user_id").in("recipe_id", recipeIds),
+        supabase.from("recipe_comments").select("recipe_id").in("recipe_id", recipeIds),
       ]);
       
       const profilesMap = new Map((profilesData || []).map(p => [p.user_id, p]));
+
+      const commentCountMap = new Map<string, number>();
+      for (const c of (commentsData || [])) {
+        commentCountMap.set(c.recipe_id, (commentCountMap.get(c.recipe_id) || 0) + 1);
+      }
       
       // Calculate avg and user ratings per recipe
       const ratingsByRecipe = new Map<string, { sum: number; count: number; userRating?: number }>();
@@ -105,6 +113,7 @@ export default function Index() {
           avgRating: ratingInfo ? ratingInfo.sum / ratingInfo.count : 0,
           ratingCount: ratingInfo?.count || 0,
           userRating: ratingInfo?.userRating || 0,
+          commentCount: commentCountMap.get(recipe.id) || 0,
         };
       });
       
@@ -157,6 +166,11 @@ export default function Index() {
     setDetailOpen(true);
   };
 
+  const openRecipeById = (recipeId: string) => {
+    const recipe = recipes.find(r => r.id === recipeId);
+    if (recipe) handleRecipeClick(recipe);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen gradient-hero flex items-center justify-center">
@@ -192,6 +206,7 @@ export default function Index() {
               <Button variant="ghost" size="icon" onClick={() => navigate("/groups")} title={t("groups.title")}>
                 <Users className="h-4 w-4" />
               </Button>
+              <NotificationBell onOpenRecipe={openRecipeById} />
               <AddRecipeDialog onRecipeAdded={fetchRecipes} />
               <Button variant="ghost" size="icon" onClick={signOut} title={t("auth.signOut")}>
                 <LogOut className="h-4 w-4" />
@@ -338,6 +353,7 @@ export default function Index() {
                   ratingCount={recipe.ratingCount}
                   userRating={recipe.userRating}
                   creatorName={recipe.profiles?.display_name}
+                  commentCount={recipe.commentCount}
                   onClick={() => handleRecipeClick(recipe)}
                 />
               </div>

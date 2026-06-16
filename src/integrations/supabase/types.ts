@@ -129,11 +129,45 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          actor_id: string
+          type: string
+          recipe_id: string | null
+          comment_id: string | null
+          read: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          actor_id: string
+          type: string
+          recipe_id?: string | null
+          comment_id?: string | null
+          read?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          actor_id?: string
+          type?: string
+          recipe_id?: string | null
+          comment_id?: string | null
+          read?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
       recipe_comments: {
         Row: {
           content: string
           created_at: string
           id: string
+          parent_id: string | null
           recipe_id: string
           updated_at: string
           user_id: string
@@ -142,6 +176,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          parent_id?: string | null
           recipe_id: string
           updated_at?: string
           user_id: string
@@ -150,6 +185,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          parent_id?: string | null
           recipe_id?: string
           updated_at?: string
           user_id?: string

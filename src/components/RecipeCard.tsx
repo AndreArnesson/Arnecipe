@@ -1,4 +1,4 @@
-import { Clock, Users } from "lucide-react";
+import { Clock, MessageCircle, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -17,6 +17,7 @@ interface RecipeCardProps {
   ratingCount?: number;
   userRating?: number;
   creatorName?: string;
+  commentCount?: number;
   onClick?: () => void;
 }
 
@@ -32,6 +33,7 @@ export function RecipeCard({
   ratingCount,
   userRating,
   creatorName,
+  commentCount,
   onClick,
 }: RecipeCardProps) {
   const { t, language } = useLanguage();
@@ -86,6 +88,12 @@ export function RecipeCard({
           )}
           {(avgRating ?? 0) > 0 && (
             <StarRating value={avgRating!} readonly size="sm" count={ratingCount} />
+          )}
+          {(commentCount ?? 0) > 0 && (
+            <div className="flex items-center gap-1">
+              <MessageCircle className="h-3.5 w-3.5" />
+              <span>{commentCount}</span>
+            </div>
           )}
         </div>
         {creatorName && (

@@ -77,9 +77,19 @@ export const translations = {
     "comments.title": "Kommentarer",
     "comments.noComments": "Inga kommentarer ännu",
     "comments.placeholder": "Skriv en kommentar...",
+    "comments.replyPlaceholder": "Skriv ett svar...",
+    "comments.reply": "Svara",
     "comments.failedToAdd": "Kunde inte lägga till kommentar",
     "comments.failedToDelete": "Kunde inte ta bort kommentar",
     "comments.failedToUpdate": "Kunde inte uppdatera kommentar",
+
+    // Notifications
+    "notifications.title": "Aviseringar",
+    "notifications.noNotifications": "Inga aviseringar",
+    "notifications.markAllRead": "Markera alla som lästa",
+    "notifications.newRecipe": "{name} lade till ett nytt recept: {recipe}",
+    "notifications.commentOnRecipe": "{name} kommenterade ditt recept \"{recipe}\"",
+    "notifications.replyToComment": "{name} svarade på din kommentar i \"{recipe}\"",
     
     // Categories
     "category.Förrätt": "Förrätt",
@@ -296,9 +306,19 @@ export const translations = {
     "comments.title": "Comments",
     "comments.noComments": "No comments yet",
     "comments.placeholder": "Write a comment...",
+    "comments.replyPlaceholder": "Write a reply...",
+    "comments.reply": "Reply",
     "comments.failedToAdd": "Failed to add comment",
     "comments.failedToDelete": "Failed to delete comment",
     "comments.failedToUpdate": "Failed to update comment",
+
+    // Notifications
+    "notifications.title": "Notifications",
+    "notifications.noNotifications": "No notifications",
+    "notifications.markAllRead": "Mark all as read",
+    "notifications.newRecipe": "{name} added a new recipe: {recipe}",
+    "notifications.commentOnRecipe": "{name} commented on your recipe \"{recipe}\"",
+    "notifications.replyToComment": "{name} replied to your comment in \"{recipe}\"",
     
     // Categories
     "category.Förrätt": "Appetizer",

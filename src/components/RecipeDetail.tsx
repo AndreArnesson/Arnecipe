@@ -913,7 +913,11 @@ export function RecipeDetail({ recipe, open, onOpenChange, onRecipeUpdated }: Re
           )}
 
           {/* Comments */}
-          <CommentSection recipeId={recipe.id} />
+          <CommentSection
+            recipeId={recipe.id}
+            recipeOwnerId={recipe.user_id}
+            recipeTitle={recipe.title}
+          />
         </div>
       </DialogContent>
     </Dialog>

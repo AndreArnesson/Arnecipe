@@ -310,13 +310,32 @@ export function AddRecipeDialog({ onRecipeAdded }: AddRecipeDialogProps) {
         }
       }
 
-      // If visibility is 'group', create group shares
+      // If visibility is 'group', create group shares and notify members
       if (visibility === "group" && selectedGroupIds.length > 0 && recipeData) {
         const shares = selectedGroupIds.map((groupId) => ({
           recipe_id: recipeData.id,
           group_id: groupId,
         }));
         await supabase.from("recipe_group_shares").insert(shares);
+
+        // Notify all group members except the creator
+        const { data: members } = await supabase
+          .from("group_members")
+          .select("user_id")
+          .in("group_id", selectedGroupIds)
+          .neq("user_id", user.id);
+
+        if (members && members.length > 0) {
+          const uniqueMembers = [...new Set(members.map(m => m.user_id))];
+          await supabase.from("notifications").insert(
+            uniqueMembers.map(memberId => ({
+              user_id: memberId,
+              actor_id: user.id,
+              type: "new_recipe",
+              recipe_id: recipeData.id,
+            }))
+          );
+        }
       }
 
       toast.success(t("message.recipeSaved"));
